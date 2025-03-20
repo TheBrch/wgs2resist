@@ -1,20 +1,9 @@
 import pandas as pd
 import numpy as np
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
-
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.svm import SVC
-from xgboost import XGBClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.metrics import accuracy_score
-import joblib
+import yaml
 
 with open("config.yaml", "r") as f:
-    config = yaml.load(f)
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 train_tsv = "training_matrix.tsv"
 sus_tsv = config["suscept_table"]
@@ -44,34 +33,5 @@ for col in X.columns:
 
 X_bin = pd.concat(new_cols, axis=1)
 
-# REDUCE THE NUMBER OF PARAMETERS
-
-X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=42)
-
-lb = LabelBinarizer()
-y_train_bin = lb.fit_transform(y_train.values)
-y_test_bin = lb.transform(y_test.values)
-
-models = {
-    "gaussian": GaussianProcessClassifier(kernel=RBF(length_scale=1.0)),
-    "svm": SVC(C=1.0, kernel="rbf", probability=True),
-    # "xgboost": XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1, use_label_encoder=False, eval_metric="logloss"),
-    # "logistic": LogisticRegression(solver="liblinear", penalty="l1")
-}
-
-for name, model in models.items():
-    print(f"Training {name}...")
-
-    multi_model = MultiOutputClassifier(model)
-    multi_model.fit(X_train, y_train_bin)
-    
-    joblib.dump(multi_model, f"{name}.pkl")
-
-    y_pred = multi_model.predict(X_test)
-    accuracy = accuracy_score(y_test_bin, y_pred)
-    print(f"Accuracy of {name}: {accuracy:.4f}")
-    
-    prob_matrix = np.array([est.predict_proba(X_test)[:, 1] for est in multi_model.estimators_]).T
-    print(f"Predicted Probabilities for {name} (rows=samples, columns=labels):")
-    print(prob_matrix)
-    print("\n")
+X_bin.to_pickle("snps_bin.pkl")
+y.to_pickle("labels.pkl")
