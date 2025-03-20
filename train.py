@@ -53,10 +53,10 @@ y_train_bin = lb.fit_transform(y_train.values)
 y_test_bin = lb.transform(y_test.values)
 
 models = {
-    "Gaussian Process": GaussianProcessClassifier(kernel=RBF(length_scale=1.0)),
-    "SVM": SVC(C=1.0, kernel="rbf", probability=True),
-    # "XGBoost": XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1, use_label_encoder=False, eval_metric="logloss"),
-    # "Logistic Regression": LogisticRegression(solver="liblinear", penalty="l1")
+    "gaussian": GaussianProcessClassifier(kernel=RBF(length_scale=1.0)),
+    "svm": SVC(C=1.0, kernel="rbf", probability=True),
+    # "xgboost": XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1, use_label_encoder=False, eval_metric="logloss"),
+    # "logistic": LogisticRegression(solver="liblinear", penalty="l1")
 }
 
 for name, model in models.items():
