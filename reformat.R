@@ -10,8 +10,10 @@ p_load(
   tibble
 )
 
-file <- "../snake_out/snippy-core/PAN.tab" #args[1]
-sus <- "susceptibility.tsv" #args[2]
+config <- read_yaml("config.yaml")
+
+file <- config$source_table
+sus <- config$suscept_table
 
 sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
   column_to_rownames("Antibiotic") %>%

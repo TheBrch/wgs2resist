@@ -13,8 +13,11 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.metrics import accuracy_score
 import joblib
 
+with open("config.yaml", "r") as f:
+    config = yaml.load(f)
+
 train_tsv = "training_matrix.tsv"
-sus_tsv = "susceptibility.tsv"
+sus_tsv = config["suscept_table"]
 sus = pd.read_csv(sus_tsv, sep="\t")
 data = pd.read_csv(train_tsv, sep="\t")
 

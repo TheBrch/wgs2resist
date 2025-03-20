@@ -1,1 +1,2 @@
 source_table: "../snake_out/snippy-core/PAN.tab"
+suscept_table: "susceptibility.tsv"
