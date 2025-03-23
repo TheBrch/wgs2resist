@@ -39,7 +39,7 @@ rule binarize:
         table="training_data/{ab}.tsv"
     output:
         "binarized_data/{ab}.pkl",
-        "binarized_data/{ab}_lab.pkl
+        "binarized_data/{ab}_lab.pkl"
     conda:
         "predictor"
     shell:
