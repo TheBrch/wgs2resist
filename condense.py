@@ -14,6 +14,10 @@ logging.basicConfig(
     filename=f"condensed_data/{antibiotic_name}.log", 
     level=logging.DEBUG
 )
+def log_exc(exc_type, exc_value, exc_tb):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
+
+sys.excepthook = log_exc
 
 X_bin = pd.read_pickle(X_bin_file)
 
