@@ -11,10 +11,10 @@ import os
 import sys
 import logging
 
-os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
-
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
+
+os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
 logging.basicConfig(
     filename=f"models/{antibiotic_name}/training.log", 
