@@ -1,19 +1,18 @@
 import pandas as pd
 import numpy as np
 import yaml
+import os
+import sys
 
 with open("config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-train_tsv = "training_matrix.tsv"
-sus_tsv = config["suscept_table"]
-sus = pd.read_csv(sus_tsv, sep="\t")
-data = pd.read_csv(train_tsv, sep="\t")
+data_file = sys.argv[1]
+antibiotic_name = data_file.split("/")[-1].split(".")[0]
+data = pd.read_csv(data_file, sep="\t")
 
-antibiotics = [col for col in sus.iloc[:, 0].to_list() if col in data.columns]
-
-y = data[antibiotics]
-X = data.drop(columns=antibiotics)
+y = data[["Susceptible"]]
+X = data.drop(columns=["Susceptible"])
 
 nuc_encoding = {
     'A': [0, 0],
@@ -33,5 +32,7 @@ for col in X.columns:
 
 X_bin = pd.concat(new_cols, axis=1)
 
-X_bin.to_pickle("snps_bin.pkl")
-y.to_pickle("labels.pkl")
+os.makedirs("binarized_data", exist_ok=True)
+
+X_bin.to_pickle(f"binarized_data/{antibiotic_name}.pkl")
+y.to_pickle(f"binarized_data/{antibiotic_name}_lab.pkl")
