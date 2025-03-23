@@ -9,6 +9,14 @@ from sklearn.metrics import accuracy_score
 import joblib
 import os
 import sys
+import logging
+
+os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
+
+logging.basicConfig(
+    filename=f"models/{antibiotic_name}/training.log", 
+    level=logging.INFO
+)
 
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
@@ -35,20 +43,18 @@ models = {
 }
 
 for name, model in models.items():
-    print(f"Training {antibiotic_name}: {name}...")
+    logging.info(f"Training {name}...")
 
     model.fit(X_train, y_train_bin)
-
-    os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test_bin, y_pred)
-    print(f"Accuracy of {antibiotic_name} {name}: {accuracy:.4f}")
+    logging.info(f"Accuracy of {name}: {accuracy:.4f}")
     
     if hasattr(model, "predict_proba"):
         prob_vector = model.predict_proba(X_test)[:, 1]
-        print(f"Predicted Probabilities for {antibiotic_name} {name}:")
-        print(prob_vector)
-    print("\n")
+        logging.info(f"Predicted Probabilities for {name}:")
+        logging.info(prob_vector)
+    logging.info("\n")
