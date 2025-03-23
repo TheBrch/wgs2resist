@@ -1,2 +1,2 @@
-source_table: "../snake_out/snippy-core/PAN.tab"
+source_table: "../snake_out/snippy-core/PAN_genomic.tab"
 suscept_table: "susceptibility.tsv"
