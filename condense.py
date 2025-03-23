@@ -26,8 +26,9 @@ to_drop = [column for column in upper.columns if any(upper[column] > 0.9)]
 
 X_reduced = X_thresh.drop(columns=to_drop)
 
-print("Original number of features:", X_bin.shape[1])
-print("After variance and correlation filtering:", X_reduced.shape[1])
+print(f"{antibiotic_name}: Original number of features:", X_bin.shape[1])
+print(f"{antibiotic_name}: After variance filtering:", X_thresh.shape[1])
+print(f"{antibiotic_name}: After correlation filtering:", X_reduced.shape[1])
 
 os.makedirs("condensed_data", exist_ok=True)
 
