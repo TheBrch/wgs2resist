@@ -7,14 +7,13 @@ import logging
 
 os.makedirs("condensed_data", exist_ok=True)
 
+X_bin_file = sys.argv[1]
+antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
+
 logging.basicConfig(
     filename=f"condensed_data/{antibiotic_name}.log", 
     level=logging.INFO
 )
-
-X_bin_file = sys.argv[1]
-antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
-
 
 X_bin = pd.read_pickle(X_bin_file)
 

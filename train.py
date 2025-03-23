@@ -13,13 +13,14 @@ import logging
 
 os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
+X_bin_file = sys.argv[1]
+antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
+
 logging.basicConfig(
     filename=f"models/{antibiotic_name}/training.log", 
     level=logging.INFO
 )
 
-X_bin_file = sys.argv[1]
-antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 X_bin = pd.read_pickle(X_bin_file)
 y = pd.read_pickle(sys.argv[2])
 
