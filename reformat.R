@@ -54,6 +54,7 @@ for (i in colnames(sus_data)) {
   data <- sus_data %>%
     select(all_of(i)) %>%
     na.omit() %>%
+    rename("Susceptible" = i) %>%
     rownames_to_column("rownames")
   merged_data <- data %>%
     left_join(tsv_data, by = "rownames") %>%
