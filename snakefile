@@ -38,7 +38,8 @@ rule binarize:
         script="binarize.py",
         table="training_data/{ab}.tsv"
     output:
-        "binarized_data/{ab}.pkl"
+        "binarized_data/{ab}.pkl",
+        "binarized_data/{ab}_lab.pkl
     conda:
         "predictor"
     shell:
@@ -59,10 +60,11 @@ rule train:
     input:
         script="train.py",
         src="condensed_data/{ab}.pkl",
+        lab="binarized_data/{ab}_lab.pkl",
         sus=suscept
     output:
         expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic", "xgboost"])
     conda:
         "predictor"
     shell:
-        "python3 {input.script} {input.src}"
+        "python3 {input.script} {input.src} {input.lab}"
