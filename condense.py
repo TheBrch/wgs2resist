@@ -17,7 +17,7 @@ X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, ran
 y_train_bin = y_train.values
 y_test_bin = y_test.values
 
-selector = VarianceThreshold(threshold=0.01)
+selector = VarianceThreshold(threshold=0.1)
 X_thresh = selector.fit_transform(X_bin)
 
 X_thresh = pd.DataFrame(X_thresh)
