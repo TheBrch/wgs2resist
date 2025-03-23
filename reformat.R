@@ -7,7 +7,8 @@ if (!require(pacman)) {
 p_load(
   readr,
   dplyr,
-  tibble
+  tibble,
+  yaml
 )
 
 config <- read_yaml("config.yaml")
@@ -28,8 +29,8 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
       )
     )
   ) %>%
-  filter(complete.cases(.)) %>%
-  filter(!apply(., 1, function(x) all(x == x[1]))) %>%
+  #filter(complete.cases(.)) %>%
+  filter(!apply(., 1, function(x) all(x == x[1]) | all(is.na(x)))) %>%
   t()
 
 tsv_data <- read_tsv(file, col_names = TRUE, show_col_types = FALSE) %>%
