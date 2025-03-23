@@ -37,7 +37,8 @@ models = {
         max_depth=3,
         learning_rate=0.1,
         use_label_encoder=False,
-        eval_metric="logloss"
+        eval_metric="logloss",
+        n_jobs=-1
     ),
     "logistic": LogisticRegression(solver="liblinear", penalty="l1")
 }
