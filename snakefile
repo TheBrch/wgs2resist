@@ -66,5 +66,6 @@ rule train:
         expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic", "xgboost"])
     conda:
         "predictor"
+    threads: 4
     shell:
         "python3 {input.script} {input.src} {input.lab}"
