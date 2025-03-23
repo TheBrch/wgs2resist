@@ -35,21 +35,20 @@ models = {
 }
 
 for name, model in models.items():
-    print(f"Training {name}...")
+    print(f"Training {antibiotic_name}: {name}...")
 
     model.fit(X_train, y_train_bin)
 
-    os.makedirs("models", exist_ok=True)
     os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test_bin, y_pred)
-    print(f"Accuracy of {name}: {accuracy:.4f}")
+    print(f"Accuracy of {antibiotic_name} {name}: {accuracy:.4f}")
     
     if hasattr(model, "predict_proba"):
         prob_vector = model.predict_proba(X_test)[:, 1]
-        print(f"Predicted Probabilities for {name}:")
+        print(f"Predicted Probabilities for {antibiotic_name} {name}:")
         print(prob_vector)
     print("\n")
