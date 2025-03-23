@@ -53,6 +53,7 @@ rule condense:
         "condensed_data/{ab}.pkl"
     conda:
         "predictor"
+    threads: 4
     shell:
         "python3 {input.script} {input.table}"
 
