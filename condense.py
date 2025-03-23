@@ -17,7 +17,7 @@ logging.basicConfig(
 
 X_bin = pd.read_pickle(X_bin_file)
 
-logging.info("Original number of features:", X_bin.shape[1])
+logging.info(f"Original number of features: {X_bin.shape[1]}")
 
 selector = VarianceThreshold(threshold=0.1)
 X_thresh = pd.DataFrame(
@@ -25,7 +25,7 @@ X_thresh = pd.DataFrame(
     columns=X_bin.columns[selector.get_support()]
 )
 
-logging.info("After variance filtering:", X_thresh.shape[1])
+logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
 corr_matrix = X_thresh.corr().abs()
 upper = corr_matrix.where(
@@ -39,6 +39,6 @@ to_drop = [column for column in upper.columns if any(upper[column] > 0.9)]
 
 X_reduced = X_thresh.drop(columns=to_drop)
 
-logging.info("After correlation filtering:", X_reduced.shape[1])
+logging.info(f"After correlation filtering: {X_reduced.shape[1]}")
 
 X_reduced.to_pickle(f"condensed_data/{antibiotic_name}.pkl")

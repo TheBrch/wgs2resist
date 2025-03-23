@@ -58,5 +58,5 @@ for name, model in models.items():
     if hasattr(model, "predict_proba"):
         prob_vector = model.predict_proba(X_test)[:, 1]
         logging.info(f"Predicted Probabilities for {name}:")
-        logging.info(prob_vector)
+        logging.info(f"{prob_vector}")
     logging.info("\n")
