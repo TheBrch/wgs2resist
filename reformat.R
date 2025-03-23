@@ -29,26 +29,45 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
       )
     )
   ) %>%
-  #filter(complete.cases(.)) %>%
   filter(!apply(., 1, function(x) all(x == x[1]) | all(is.na(x)))) %>%
-  t()
+  t() %>%
+  as.data.frame()
 
 tsv_data <- read_tsv(file, col_names = TRUE, show_col_types = FALSE) %>%
   mutate(combined = paste(CHR, POS, sep = "-")) %>%
   column_to_rownames("combined") %>%
   select(-CHR, -POS, -REF) %>%
   `colnames<-`(gsub("^PAN_", "", colnames(.))) %>%
-  t()
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column("rownames")
 
-merged_data <- merge(tsv_data, sus_data, by = "row.names") %>%
-  column_to_rownames("Row.names")
+if (!dir.exists("./training_data")) {
+  dir.create("./training_data", recursive = TRUE)
+}
 
-write.table(
-  merged_data,
-  file = "training_matrix.tsv",
-  sep = "\t",
-  row.names = FALSE,
-  col.names = TRUE,
-  quote = FALSE
-)
+colSums(!is.na(sus_data))
+
+for (i in colnames(sus_data)) {
+  n <- gsub("\\/", "_", i)
+  fn <- paste0("./training_data/", n, ".tsv")
+  data <- sus_data %>%
+    select(i) %>%
+    na.omit() %>%
+    rownames_to_column("rownames")
+  merged_data <- data %>%
+    left_join(tsv_data, by = "rownames") %>%
+    column_to_rownames("rownames")
+  assign(n, merged_data)
+  write.table(
+    merged_data,
+    file = fn,
+    sep = "\t",
+    row.names = FALSE,
+    col.names = TRUE,
+    quote = FALSE
+  )
+}
+
+
 
