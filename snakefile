@@ -1,25 +1,33 @@
+import glob, os
+
 if os.path.exists('config.yaml'):
     configfile: 'config.yaml'
 
 source=config['source_table']
 suscept=config['suscept_table']
 
-antibiotics = []
-with open(suscept, "r") as f:
-    for line in f.readlines()[1:]:
-        antibiotics.append(
-            line.strip().split("\t")[0].replace("/", "_")
-        )
+def get_antibiotics (x):
+    reformat_dir = checkpoints.reformat.get().output[0]
+    r_tsvs = glob.glob(reformat_dir+"/*.tsv")
+    antibiotics = []
+    for table in r_tsvs:
+        filename = table.split('/')[-1]
+        match = re.match(r"(.+)\.tsv", filename)
+        if match:
+            name_part = match.groups()[0]
+            antibiotics.append(name_part)
+    return antibiotics
 
 rule all:
     input:
-        lambda x: expand("models/{ab}/{model}.pkl", ab=antibiotics, model=["gaussian","svm","logistic","xgboost"]),
+        lambda x: expand("models/{ab}/{model}.pkl", ab=get_antibiotics(x), model=["gaussian","svm","logistic","xgboost"]),
 
-rule reformat:
+checkpoint reformat:
     input:
-        script="reformat.R"
+        script="reformat.R",
+        sus=suscept
     output:
-        lambda x: expand(f"training_data/{ab}.tsv", ab=antibiotics)
+        directory("training_data")
     conda:
         "R"
     shell:
@@ -27,7 +35,7 @@ rule reformat:
 
 rule binarize:
     input:
-        script="binarize.py"
+        script="binarize.py",
         table="training_data/{ab}.tsv"
     output:
         "binarized_data/{ab}.pkl"
@@ -38,7 +46,7 @@ rule binarize:
 
 rule condense:
     input:
-        script="condense.py"
+        script="condense.py",
         table="binarized_data/{ab}.pkl"
     output:
         "condensed_data/{ab}.pkl"
@@ -50,10 +58,10 @@ rule condense:
 rule train:
     input:
         script="train.py",
-        src="binarized_data/{ab}.pkl",
+        src="condensed_data/{ab}.pkl",
         sus=suscept
     output:
-        lambda x: expand(f"{ab}/{model}.pkl", model=["gaussian","svm","logistic","xgboost"], ab=[wildcards.ab])
+        expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic", "xgboost"])
     conda:
         "predictor"
     shell:
