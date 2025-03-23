@@ -12,7 +12,7 @@ antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 
 logging.basicConfig(
     filename=f"condensed_data/{antibiotic_name}.log", 
-    level=logging.INFO
+    level=logging.DEBUG
 )
 
 X_bin = pd.read_pickle(X_bin_file)
