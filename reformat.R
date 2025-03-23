@@ -52,7 +52,7 @@ for (i in colnames(sus_data)) {
   n <- gsub("\\/", "_", i)
   fn <- paste0("./training_data/", n, ".tsv")
   data <- sus_data %>%
-    select(i) %>%
+    select(all_of(i)) %>%
     na.omit() %>%
     rownames_to_column("rownames")
   merged_data <- data %>%
