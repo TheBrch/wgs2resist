@@ -35,7 +35,7 @@ X_thresh = pd.DataFrame(
 logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
 @jit(nopython=True, parallel=True)
-def get_correlated(corr_matrix, threshold=0.9):
+def get_correlated(corr_matrix, threshold=0.9, error_model="numpy"):
     to_drop = set()
     n = corr_matrix.shape[0]
     for i in prange(n):
@@ -44,7 +44,7 @@ def get_correlated(corr_matrix, threshold=0.9):
                 to_drop.add(j)
     return sorted(to_drop)
 
-corr_matrix = X_thresh.corr().astype(np.float16).abs()
+corr_matrix = X_thresh.corr().astype(np.float32).abs()
 logging.info(f"Generated correlation matrix.")
 
 to_drop_ind = get_correlated(corr_matrix.values)
