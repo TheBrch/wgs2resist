@@ -51,8 +51,7 @@ rule condense:
         script="condense.py",
         table="binarized_data/{ab}.pkl"
     output:
-        "condensed_data/{ab}.pkl",
-        "condensed_data/{ab}.log"
+        "condensed_data/{ab}.pkl"
     conda:
         "predictor"
     threads: 8
@@ -66,8 +65,7 @@ rule train:
         lab="binarized_data/{ab}_lab.pkl",
         sus=suscept
     output:
-        expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic", "xgboost"]),
-        "models/{ab}/training.log"
+        expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic", "xgboost"])
     conda:
         "predictor"
     threads: 4
