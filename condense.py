@@ -1,4 +1,5 @@
 from sklearn.feature_selection import VarianceThreshold
+from numba import jit, prange
 import numpy as np
 import pandas as pd
 import os
@@ -31,15 +32,19 @@ X_thresh = pd.DataFrame(
 
 logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
-corr_matrix = X_thresh.corr().abs()
-upper = corr_matrix.where(
-    np.triu(
-        np.ones(corr_matrix.shape),
-        k=1
-    ).astype(bool)
-)
+@jit(nopython=True, parallel=True)
+def get_correlated(corr_matrix, threshold=0.9):
+    to_drop = set()
+    n = corr_matrix.shape[0]
+    for i in prange(n):  # Parallel loop
+        for j in range(i + 1, n):
+            if corr_matrix[i, j] > threshold:
+                to_drop.add(j)
+    return list(to_drop)
 
-to_drop = [column for column in upper.columns if any(upper[column] > 0.9)]
+corr_matrix = X_thresh.corr().abs().astype(np.float32)
+corr_matrix.to_csv(f"condensed_data/{antibiotic_name}_corr.tsv", sep="\t", index=True)
+to_drop = get_correlated(corr_matrix.values)
 
 X_reduced = X_thresh.drop(columns=to_drop)
 
