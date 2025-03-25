@@ -13,7 +13,9 @@ antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 
 logging.basicConfig(
     filename=f"condensed_data/{antibiotic_name}.log", 
-    level=logging.DEBUG
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
 )
 def log_exc(exc_type, exc_value, exc_tb):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
@@ -36,18 +38,22 @@ logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 def get_correlated(corr_matrix, threshold=0.9):
     to_drop = set()
     n = corr_matrix.shape[0]
-    for i in prange(n):  # Parallel loop
+    for i in prange(n):
         for j in range(i + 1, n):
             if corr_matrix[i, j] > threshold:
                 to_drop.add(j)
+    logging.info(f"Found highly correllated columns")
     return sorted(to_drop)
 
-corr_matrix = X_thresh.corr().abs().astype(np.float32)
-corr_matrix.to_csv(f"condensed_data/{antibiotic_name}_corr.tsv", sep="\t", index=True)
+corr_matrix = X_thresh.corr().astype(np.float16).abs()
+logging.info(f"Generated correlation matrix.")
+
 to_drop = get_correlated(corr_matrix.values)
+corr_matrix[to_drop].to_feather(f"condensed_data/{antibiotic_name}_hicorr.feather")
+logging.info(f"Exported high correllation SNP bit info.")
 
 X_reduced = X_thresh.drop(columns=to_drop)
-
 logging.info(f"After correlation filtering: {X_reduced.shape[1]}")
 
 X_reduced.to_pickle(f"condensed_data/{antibiotic_name}.pkl")
+logging.info(f"Exported condensed data. Done.")
