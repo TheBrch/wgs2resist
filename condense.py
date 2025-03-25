@@ -40,7 +40,7 @@ def get_correlated(corr_matrix, threshold=0.9):
         for j in range(i + 1, n):
             if corr_matrix[i, j] > threshold:
                 to_drop.add(j)
-    return list(to_drop)
+    return sorted(to_drop)
 
 corr_matrix = X_thresh.corr().abs().astype(np.float32)
 corr_matrix.to_csv(f"condensed_data/{antibiotic_name}_corr.tsv", sep="\t", index=True)
