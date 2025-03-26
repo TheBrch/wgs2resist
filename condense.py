@@ -1,5 +1,5 @@
 from sklearn.feature_selection import VarianceThreshold
-from numba import jit, prange
+from numba import njit, prange
 import numpy as np
 import pandas as pd
 import os
@@ -34,15 +34,17 @@ X_thresh = pd.DataFrame(
 
 logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
-@jit(nopython=True, parallel=True)
-def get_correlated(corr_matrix, threshold=0.9, error_model="numpy"):
-    to_drop = set()
+@njit(parallel=True)
+def get_correlated(corr_matrix):
+    threshold=0.9
     n = corr_matrix.shape[0]
+    to_drop = np.zeros(n, dtype=np.bool_)
     for i in prange(n):
         for j in range(i + 1, n):
             if corr_matrix[i, j] > threshold:
-                to_drop.add(j)
-    return sorted(to_drop)
+                to_drop[j] = True
+    return np.nonzero(to_drop)[0]
+
 
 corr_matrix = X_thresh.corr().astype(np.float32).abs()
 logging.info(f"Generated correlation matrix.")
