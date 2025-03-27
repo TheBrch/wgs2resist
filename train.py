@@ -37,7 +37,13 @@ sys.excepthook = log_exc
 X_bin = pd.read_pickle(X_bin_file)
 y = pd.read_pickle(sys.argv[2]).values
 
-X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=42)
+rnd_s = 41
+y_train = np.array([0])
+
+while np.all(y_train == y_train[0]).item():
+    rnd_s+=1
+    X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=rnd_s)
+    print(rnd_s)
 
 
 models = {
