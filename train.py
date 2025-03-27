@@ -1,3 +1,9 @@
+import cuml.accel
+cuml.accel.install()
+
+import cudf.pandas
+cudf.pandas.install()
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.gaussian_process import GaussianProcessClassifier
@@ -18,8 +24,11 @@ os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
 logging.basicConfig(
     filename=f"models/{antibiotic_name}/training.log", 
-    level=logging.DEBUG
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
 )
+
 def log_exc(exc_type, exc_value, exc_tb):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
 
