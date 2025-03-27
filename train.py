@@ -54,7 +54,7 @@ models = {
         use_label_encoder=False,
         eval_metric="logloss",
         n_jobs=-1,
-        tree_method="gpu_hist"
+        device="cuda"
     )
 }
 
