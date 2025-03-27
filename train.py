@@ -44,7 +44,8 @@ y_train = np.array([0])
 while np.all(y_train == y_train[0]):
     rnd_s+=1
     X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=rnd_s)
-    logging.warning(f"Test split with seed {rnd_s-1} produced an identical label set. Retrying with seed {rnd_s} ...")
+    if rnd_s != 42:
+        logging.warning(f"Test split with seed {rnd_s-1} produced an identical label set. Retrying with seed {rnd_s} ...")
 
 
 models = {
