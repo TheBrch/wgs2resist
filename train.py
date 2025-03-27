@@ -5,6 +5,7 @@ import cudf.pandas
 cudf.pandas.install()
 
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
@@ -40,10 +41,10 @@ y = pd.read_pickle(sys.argv[2]).values
 rnd_s = 41
 y_train = np.array([0])
 
-while np.all(y_train == y_train[0]).item():
+while np.all(y_train == y_train[0]):
     rnd_s+=1
     X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=rnd_s)
-    print(rnd_s)
+    logging.warning(f"Test split with seed {rnd_s-1} produced an identical label set. Retrying with seed {rnd_s} ...")
 
 
 models = {
