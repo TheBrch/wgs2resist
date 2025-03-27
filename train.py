@@ -44,7 +44,7 @@ y_test_bin = y_test.values
 
 
 models = {
-    "logistic": LogisticRegression(solver="liblinear", penalty="l1"),
+    "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
     "gaussian": GaussianProcessClassifier(kernel=RBF(length_scale=1.0)),
     "svm": SVC(C=1.0, kernel="rbf", probability=True),
     "xgboost": XGBClassifier(
@@ -53,7 +53,8 @@ models = {
         learning_rate=0.1,
         use_label_encoder=False,
         eval_metric="logloss",
-        n_jobs=-1
+        n_jobs=-1,
+        tree_method="gpu_hist"
     )
 }
 
