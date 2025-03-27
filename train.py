@@ -35,12 +35,9 @@ def log_exc(exc_type, exc_value, exc_tb):
 sys.excepthook = log_exc
 
 X_bin = pd.read_pickle(X_bin_file)
-y = pd.read_pickle(sys.argv[2])
+y = pd.read_pickle(sys.argv[2]).values
 
 X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=42)
-
-y_train_bin = y_train.values
-y_test_bin = y_test.values
 
 
 models = {
@@ -61,12 +58,12 @@ models = {
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
-    model.fit(X_train, y_train_bin)
+    model.fit(X_train, y_train)
 
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
     y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test_bin, y_pred)
+    accuracy = accuracy_score(y_test, y_pred)
     logging.info(f"Accuracy of {name}: {accuracy:.4f}")
     
     if hasattr(model, "predict_proba"):
