@@ -18,7 +18,7 @@ sus <- config$suscept_table
 
 sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
   column_to_rownames("Antibiotic") %>%
-  select(contains("_PCD_")) %>%
+  # select(contains("_PCD_")) %>%
   mutate(
     across(
       everything(),
