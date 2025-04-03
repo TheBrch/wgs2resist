@@ -6,13 +6,12 @@ cudf.pandas.install()
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 import joblib
 import os
 import sys
@@ -25,7 +24,7 @@ os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
 
 logging.basicConfig(
     filename=f"models/{antibiotic_name}/training.log", 
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
@@ -38,15 +37,7 @@ sys.excepthook = log_exc
 X_bin = pd.read_pickle(X_bin_file)
 y = pd.read_pickle(sys.argv[2]).values
 
-rnd_s = 41
-y_train = np.array([0])
-
-while np.all(y_train == y_train[0]):
-    rnd_s+=1
-    X_train, X_test, y_train, y_test = train_test_split(X_bin, y, test_size=0.2, random_state=rnd_s)
-    if rnd_s != 42:
-        logging.warning(f"Test split with seed {rnd_s-1} produced an identical label set. Retrying with seed {rnd_s} ...")
-
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 models = {
     "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
@@ -66,16 +57,32 @@ models = {
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
-    model.fit(X_train, y_train)
+    model.fit(X_bin, y)
 
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
+    cv_scores = []
+
+    for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
+        logging.info(f"{name} - Fold {fold}...")
+
+        X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        
+        model.fit(X_train, y_train)
+        
+        score = model.score(X_test, y_test)
+        logging.info(f"Fold {fold} score: {score}")
+        cv_scores.append(score)
+        
+    logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
+    
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     logging.info(f"Accuracy of {name}: {accuracy:.4f}")
     
-    if hasattr(model, "predict_proba"):
-        prob_vector = model.predict_proba(X_test)[:, 1]
-        logging.info(f"Predicted Probabilities for {name}:")
-        logging.info(f"{prob_vector}")
-    logging.info("\n")
+    # if hasattr(model, "predict_proba"):
+    #     prob_vector = model.predict_proba(X_test)[:, 1]
+    #     logging.info(f"Predicted Probabilities for {name}:")
+    #     logging.info(f"{prob_vector}")
+    # logging.info("\n")
