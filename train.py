@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
+from sklearn.metrics import confusion_matrix
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
@@ -57,6 +58,8 @@ models = {
     )
 }
 
+logging.info(f"-----{antibiotic_name}-----\n")
+
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
@@ -65,6 +68,7 @@ for name, model in models.items():
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
     cv_scores = []
+    cm_sum = np.zeros((len(zero_n_one), len(zero_n_one)))
 
     for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
         logging.info(f"{name} - Fold {fold}...")
@@ -77,11 +81,34 @@ for name, model in models.items():
             continue
         
         model.fit(X_train, y_train)
-        
+
+        y_pred = model.predict(X_test)
+        cm = confusion_matrix(y_test, y_pred)
+        cm_sum += cm
+
+        logging.info(
+            f'''Fold {fold} confusion matrix:\n{
+                pd.DataFrame(
+                    cm,
+                    index=[f"Actual {label}" for label in zero_n_one],
+                    columns=[f"Predicted {label}" for label in zero_n_one]
+                )
+            }'''
+        )
+
         score = model.score(X_test, y_test)
         logging.info(f"Fold {fold} score: {score}")
         cv_scores.append(score)
-        
+    
+    logging.info(
+        f'''Mean confusion matrix:\n{
+            pd.DataFrame(
+                cm_sum / len(cv_scores),
+                index=[f"Actual {label}" for label in zero_n_one],
+                columns=[f"Predicted {label}" for label in zero_n_one]
+            )
+        }'''
+    )
     logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
     
     # y_pred = model.predict(X_test)
