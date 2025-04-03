@@ -37,7 +37,10 @@ sys.excepthook = log_exc
 X_bin = pd.read_pickle(X_bin_file)
 y = pd.read_pickle(sys.argv[2]).values
 
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+zero_n_one, counts = np.unique(y, return_counts=True)
+splitcount = max(min(min(counts), 5), 2)
+
+skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
 
 models = {
     "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
@@ -68,6 +71,10 @@ for name, model in models.items():
 
         X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
         y_train, y_test = y[train_index], y[test_index]
+
+        if not np.all(np.isin(zero_n_one, y_train)):
+            logging.info(f"Fold {fold} training data not diverse, skipping...")
+            continue
         
         model.fit(X_train, y_train)
         
