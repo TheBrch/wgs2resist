@@ -77,9 +77,9 @@ for name, model in models.items():
         
     logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
     
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    logging.info(f"Accuracy of {name}: {accuracy:.4f}")
+    # y_pred = model.predict(X_test)
+    # accuracy = accuracy_score(y_test, y_pred)
+    # logging.info(f"Accuracy of {name}: {accuracy:.4f}")
     
     # if hasattr(model, "predict_proba"):
     #     prob_vector = model.predict_proba(X_test)[:, 1]
