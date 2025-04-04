@@ -48,7 +48,7 @@ label_stats = pd.DataFrame({
 
 early_stop = xgb.callback.EarlyStopping(
     rounds=10,
-    metric_name='mlogloss',
+    metric_name='logloss',
     save_best=True,
     maximize=False
 )
