@@ -109,6 +109,12 @@ for name, model in models.items():
             logging.info(f"Model fitted.")
 
             y_pred = model.predict(X_test)
+
+            if hasattr(model, "predict_proba"):
+                prob_vector = model.predict_proba(X_test)[:, 1]
+                logging.info(f"Prediction probabilities for {name}, fold {fold}:")
+                logging.info(f"{prob_vector}\n")
+
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
             cm_sum += cm
 
@@ -148,13 +154,3 @@ for name, model in models.items():
             logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
     else:
         logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
-    
-    # y_pred = model.predict(X_test)
-    # accuracy = accuracy_score(y_test, y_pred)
-    # logging.info(f"Accuracy of {name}: {accuracy:.4f}")
-    
-    # if hasattr(model, "predict_proba"):
-    #     prob_vector = model.predict_proba(X_test)[:, 1]
-    #     logging.info(f"Predicted Probabilities for {name}:")
-    #     logging.info(f"{prob_vector}")
-    # logging.info("\n")
