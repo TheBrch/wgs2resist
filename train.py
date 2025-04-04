@@ -46,12 +46,23 @@ label_stats = pd.DataFrame({
     'Ratio': [f"{(count / sum(counts)):.2f}" for count in counts]
 })
 
-early_stop = xgb.callback.EarlyStopping(
-    rounds=10,
-    metric_name='logloss',
-    save_best=True,
-    maximize=False
-)
+def define_xgb():
+    early_stop = xgb.callback.EarlyStopping(
+        rounds=10,
+        metric_name='logloss',
+        save_best=True,
+        maximize=False
+    )
+
+    return xgb.XGBClassifier(
+        n_estimators=1000,
+        max_depth=10,
+        learning_rate=0.1,
+        eval_metric="logloss",
+        n_jobs=-1,
+        device="cuda",
+        callbacks=[early_stop]
+    )
 
 models = {
     "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
@@ -60,15 +71,7 @@ models = {
         n_restarts_optimizer=10
     ),
     "svm": SVC(C=1.0, kernel="rbf", probability=True),
-    "xgboost": xgb.XGBClassifier(
-        n_estimators=1000,
-        max_depth=3,
-        learning_rate=0.1,
-        eval_metric="logloss",
-        n_jobs=-1,
-        device="cuda",
-        callbacks=[early_stop]
-    )
+    "xgboost": define_xgb()
 }
 
 logging.info(f"-----{antibiotic_name}-----\n")
@@ -158,6 +161,7 @@ for name, model in models.items():
                     best_xgb_fold = fold
                     best_xgb_score = score
                     best_xgb_model = model
+                model = define_xgb()
 
         if hasattr(model, "predict_proba"):
             logging.info(
