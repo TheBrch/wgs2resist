@@ -11,7 +11,7 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.metrics import confusion_matrix
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
+import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
 import joblib
 import os
@@ -46,18 +46,28 @@ label_stats = pd.DataFrame({
     'Ratio': [f"{(count / sum(counts)):.2f}" for count in counts]
 })
 
+early_stop = xgb.callback.EarlyStopping(
+    rounds=10,
+    metric_name='mlogloss',
+    save_best=True,
+    maximize=False
+)
 
 models = {
     "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
-    "gaussian": GaussianProcessClassifier(kernel=RBF(length_scale=1.0)),
+    "gaussian": GaussianProcessClassifier(
+        kernel=RBF(length_scale=1.0),
+        n_restarts_optimizer=10
+    ),
     "svm": SVC(C=1.0, kernel="rbf", probability=True),
-    "xgboost": XGBClassifier(
-        n_estimators=100,
+    "xgboost": xgb.XGBClassifier(
+        n_estimators=1000,
         max_depth=3,
         learning_rate=0.1,
         eval_metric="logloss",
         n_jobs=-1,
-        device="cuda"
+        device="cuda",
+        callbacks=[early_stop]
     )
 }
 
@@ -67,14 +77,19 @@ logging.info(f"Source susceptibility results:\n{label_stats.to_string(index=Fals
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
-    model.fit(X_bin, y)
-    joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
+    if name != "xgboost":
+        model.fit(X_bin, y)
+        joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
+        logging.info(f"{name} model exported.")
 
     cv_scores = []
     cm_sum = np.zeros((len(zero_n_one), len(zero_n_one)))
 
+    best_xgb_score = -1
+
     splitcount = min(min(counts), 5)
 
+    logging.info(f"Cross-validation of {name}...")
     if splitcount > 1:
         skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
         for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
@@ -87,7 +102,10 @@ for name, model in models.items():
                 logging.info(f"Fold {fold} training data not diverse, skipping...")
                 continue
             
-            model.fit(X_train, y_train)
+            if name == "xgboost":
+                model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+            else:
+                model.fit(X_train, y_train)
             logging.info(f"Model fitted.")
 
             y_pred = model.predict(X_test)
@@ -107,6 +125,12 @@ for name, model in models.items():
             score = model.score(X_test, y_test)
             logging.info(f"Fold {fold} score: {score}")
             cv_scores.append(score)
+
+            if name == "xgboost":
+                if score > best_xgb_score:
+                    best_xgb_fold = fold
+                    best_xgb_score = score
+                    best_xgb_model = model
         
         logging.info(
             f'''Mean confusion matrix:\n{
@@ -118,6 +142,10 @@ for name, model in models.items():
             }'''
         )
         logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
+
+        if name == "xgboost":
+            joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
+            logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
     else:
         logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
     
