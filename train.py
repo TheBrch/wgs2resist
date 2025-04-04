@@ -36,12 +36,16 @@ def log_exc(exc_type, exc_value, exc_tb):
 sys.excepthook = log_exc
 
 X_bin = pd.read_pickle(X_bin_file)
-y = pd.read_pickle(sys.argv[2]).values
+y = pd.read_pickle(sys.argv[2]).values.ravel()
 
 zero_n_one, counts = np.unique(y, return_counts=True)
-splitcount = max(min(min(counts), 5), 2)
 
-skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
+label_stats = pd.DataFrame({
+    'Label': zero_n_one,
+    'Count': counts,
+    'Ratio': [f"{(count / sum(counts)):.2f}" for count in counts]
+})
+
 
 models = {
     "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
@@ -51,7 +55,6 @@ models = {
         n_estimators=100,
         max_depth=3,
         learning_rate=0.1,
-        use_label_encoder=False,
         eval_metric="logloss",
         n_jobs=-1,
         device="cuda"
@@ -59,57 +62,64 @@ models = {
 }
 
 logging.info(f"-----{antibiotic_name}-----\n")
+logging.info(f"Source susceptibility results:\n{label_stats.to_string(index=False)}\n\n")
 
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
     model.fit(X_bin, y)
-
     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
 
     cv_scores = []
     cm_sum = np.zeros((len(zero_n_one), len(zero_n_one)))
 
-    for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
-        logging.info(f"{name} - Fold {fold}...")
+    splitcount = min(min(counts), 5)
 
-        X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
-        y_train, y_test = y[train_index], y[test_index]
+    if splitcount > 1:
+        skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
+        for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
+            logging.info(f"{name} - Fold {fold}...")
 
-        if not np.all(np.isin(zero_n_one, y_train)):
-            logging.info(f"Fold {fold} training data not diverse, skipping...")
-            continue
+            X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            if not np.all(np.isin(zero_n_one, y_train)):
+                logging.info(f"Fold {fold} training data not diverse, skipping...")
+                continue
+            
+            model.fit(X_train, y_train)
+            logging.info(f"Model fitted.")
+
+            y_pred = model.predict(X_test)
+            cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
+            cm_sum += cm
+
+            logging.info(
+                f'''Fold {fold} confusion matrix:\n{
+                    pd.DataFrame(
+                        cm,
+                        index=[f"Actual {label}" for label in zero_n_one],
+                        columns=[f"Predicted {label}" for label in zero_n_one]
+                    )
+                }'''
+            )
+
+            score = model.score(X_test, y_test)
+            logging.info(f"Fold {fold} score: {score}")
+            cv_scores.append(score)
         
-        model.fit(X_train, y_train)
-
-        y_pred = model.predict(X_test)
-        cm = confusion_matrix(y_test, y_pred)
-        cm_sum += cm
-
         logging.info(
-            f'''Fold {fold} confusion matrix:\n{
+            f'''Mean confusion matrix:\n{
                 pd.DataFrame(
-                    cm,
+                    cm_sum / len(cv_scores),
                     index=[f"Actual {label}" for label in zero_n_one],
                     columns=[f"Predicted {label}" for label in zero_n_one]
                 )
             }'''
         )
-
-        score = model.score(X_test, y_test)
-        logging.info(f"Fold {fold} score: {score}")
-        cv_scores.append(score)
-    
-    logging.info(
-        f'''Mean confusion matrix:\n{
-            pd.DataFrame(
-                cm_sum / len(cv_scores),
-                index=[f"Actual {label}" for label in zero_n_one],
-                columns=[f"Predicted {label}" for label in zero_n_one]
-            )
-        }'''
-    )
-    logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
+        logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
+    else:
+        logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
     
     # y_pred = model.predict(X_test)
     # accuracy = accuracy_score(y_test, y_pred)
