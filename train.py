@@ -89,11 +89,11 @@ for name, model in models.items():
 
     splitcount = min(min(counts), 5)
 
-    logging.info(f"Cross-validation of {name}...")
+    logging.info(f"\nCross-validation of {name}...\n")
     if splitcount > 1:
         skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
         for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
-            logging.info(f"{name} - Fold {fold}...")
+            logging.info(f"{name} - Fold {fold}...\n")
 
             X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
             y_train, y_test = y[train_index], y[test_index]
@@ -112,8 +112,29 @@ for name, model in models.items():
 
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
-                logging.info(f"Prediction probabilities for {name}, fold {fold}:")
-                logging.info(f"{prob_vector}\n")
+                logging.info(
+                    f'''Prediction probability stats for fold {fold}:\n{
+                        pd.DataFrame({
+                            'Stat': [
+                                'Mean',
+                                'SD',
+                                '25Q',
+                                'Median',
+                                '75Q',
+                                'Min',
+                                'Max'
+                            ],
+                            'Value': [
+                                np.mean(prob_vector),
+                                np.std(prob_vector),
+                                np.percentile(prob_vector, 25),
+                                np.median(prob_vector),
+                                np.percentile(prob_vector, 75),
+                                np.min(prob_vector),
+                                np.max(prob_vector)
+                            ]
+                        })
+                    }''')
 
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
             cm_sum += cm
