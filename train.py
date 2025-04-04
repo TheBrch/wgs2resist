@@ -85,6 +85,9 @@ for name, model in models.items():
     cv_scores = []
     cm_sum = np.zeros((len(zero_n_one), len(zero_n_one)))
 
+    ps_lab = ['Mean', 'SD', '25Q', 'Median', '75Q', 'Min', 'Max']
+    ps_sum = np.zeros(7)
+
     best_xgb_score = -1
 
     splitcount = min(min(counts), 5)
@@ -112,29 +115,26 @@ for name, model in models.items():
 
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
+                prob_stats = np.array([
+                    np.mean(prob_vector),
+                    np.std(prob_vector),
+                    np.percentile(prob_vector, 25),
+                    np.median(prob_vector),
+                    np.percentile(prob_vector, 75),
+                    np.min(prob_vector),
+                    np.max(prob_vector)
+                ])
+                ps_sum += prob_stats
+
                 logging.info(
                     f'''Prediction probability stats for fold {fold}:\n{
-                        pd.DataFrame({
-                            'Stat': [
-                                'Mean',
-                                'SD',
-                                '25Q',
-                                'Median',
-                                '75Q',
-                                'Min',
-                                'Max'
-                            ],
-                            'Value': [
-                                np.mean(prob_vector),
-                                np.std(prob_vector),
-                                np.percentile(prob_vector, 25),
-                                np.median(prob_vector),
-                                np.percentile(prob_vector, 75),
-                                np.min(prob_vector),
-                                np.max(prob_vector)
-                            ]
-                        })
-                    }''')
+                        pd.DataFrame(
+                            prob_stats,
+                            index=ps_lab,
+                            columns=['']
+                        )
+                    }'''
+                )
 
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
             cm_sum += cm
@@ -158,7 +158,17 @@ for name, model in models.items():
                     best_xgb_fold = fold
                     best_xgb_score = score
                     best_xgb_model = model
-        
+
+        if hasattr(model, "predict_proba"):
+            logging.info(
+                f'''Mean prediction probability stats:\n{
+                    pd.DataFrame(
+                        ps_sum / len(cv_scores),
+                        index=ps_lab,
+                        columns=['']
+                    )
+                }'''
+            )
         logging.info(
             f'''Mean confusion matrix:\n{
                 pd.DataFrame(
