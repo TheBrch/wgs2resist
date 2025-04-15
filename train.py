@@ -85,12 +85,6 @@ for name, model in models.items():
         joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
         logging.info(f"{name} model exported.")
 
-    cv_scores = []
-    cm_sum = np.zeros((len(zero_n_one), len(zero_n_one)))
-
-    ps_lab = ['Mean', 'SD', '25Q', 'Median', '75Q', 'Min', 'Max']
-    ps_sum = np.zeros(7)
-
     best_xgb_score = -1
 
     splitcount = min(min(counts), 5)
@@ -98,6 +92,7 @@ for name, model in models.items():
     logging.info(f"\nCross-validation of {name}...\n")
     if splitcount > 1:
         skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
+        data_collection = []
         for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
             logging.info(f"{name} - Fold {fold}...\n")
 
@@ -114,33 +109,11 @@ for name, model in models.items():
                 model.fit(X_train, y_train)
             logging.info(f"Model fitted.")
 
-            y_pred = model.predict(X_test)
-
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
-                prob_stats = np.array([
-                    np.mean(prob_vector),
-                    np.std(prob_vector),
-                    np.percentile(prob_vector, 25),
-                    np.median(prob_vector),
-                    np.percentile(prob_vector, 75),
-                    np.min(prob_vector),
-                    np.max(prob_vector)
-                ])
-                ps_sum += prob_stats
 
-                logging.info(
-                    f'''Prediction probability stats for fold {fold}:\n{
-                        pd.DataFrame(
-                            prob_stats,
-                            index=ps_lab,
-                            columns=['']
-                        )
-                    }'''
-                )
-
+            y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
-            cm_sum += cm
 
             logging.info(
                 f'''Fold {fold} confusion matrix:\n{
@@ -154,8 +127,12 @@ for name, model in models.items():
 
             score = model.score(X_test, y_test)
             logging.info(f"Fold {fold} score: {score}")
-            cv_scores.append(score)
 
+            newrow = np.concatenate((score, cm.ravel()))
+            if hasattr(model, "predict_proba"):
+                newrow = np.concatenate((newrow, prob_vactor))
+            data_collection.append(newrow)
+            
             if name == "xgboost":
                 if score > best_xgb_score:
                     best_xgb_fold = fold
@@ -163,29 +140,14 @@ for name, model in models.items():
                     best_xgb_model = model
                 model = define_xgb()
 
-        if hasattr(model, "predict_proba"):
-            logging.info(
-                f'''Mean prediction probability stats:\n{
-                    pd.DataFrame(
-                        ps_sum / len(cv_scores),
-                        index=ps_lab,
-                        columns=['']
-                    )
-                }'''
-            )
-        logging.info(
-            f'''Mean confusion matrix:\n{
-                pd.DataFrame(
-                    cm_sum / len(cv_scores),
-                    index=[f"Actual {label}" for label in zero_n_one],
-                    columns=[f"Predicted {label}" for label in zero_n_one]
-                )
-            }'''
-        )
-        logging.info(f"{name} - Mean CV Score: {np.mean(cv_scores):.4f}")
-
         if name == "xgboost":
             joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
             logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
+
+        df = pd.DataFrame(data_collection)
+        column_names = ["Score", "TN", "FP", "FN", "TP"]
+        df.columns = column_names + list(df.columns[len(column_names):])
+        df.to_csv(f"models/{antibiotic_name}/{name}_crossval_results.tsv", sep='\t', index=True)
+
     else:
         logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
