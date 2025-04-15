@@ -114,12 +114,13 @@ for name, model in models.items():
                 fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
                 precision, recall, pr_thresholds = precision_recall_curve(y_test, y_probs)
                 roc_prc_df = pd.DataFrame({
+                    'probability': prob_vector,
                     'fpr': fpr,
                     'tpr': tpr,
                     'precision': precision,
                     'recall': recall
                 })
-                roc_prc_df.to_csv(f"models/{antibiotic_name}/{name}_roc_prc.tsv", sep='\t', index=True)
+                roc_prc_df.to_csv(f"models/{antibiotic_name}/{name}_f{fold}_roc_prc.tsv", sep='\t', index=True)
 
 
             y_pred = model.predict(X_test)
@@ -139,8 +140,6 @@ for name, model in models.items():
             logging.info(f"Fold {fold} score: {score}")
 
             newrow = np.concatenate(([score], cm.ravel()))
-            if hasattr(model, "predict_proba"):
-                newrow = np.concatenate((newrow, prob_vector))
             data_collection.append(newrow)
             
             if name == "xgboost":
@@ -156,7 +155,7 @@ for name, model in models.items():
 
         df = pd.DataFrame(data_collection)
         column_names = ["Score", "TN", "FP", "FN", "TP"]
-        df.columns = column_names + list(df.columns[len(column_names):])
+        df.columns = column_names
         df.to_csv(f"models/{antibiotic_name}/{name}_crossval_results.tsv", sep='\t', index=True)
 
     else:
