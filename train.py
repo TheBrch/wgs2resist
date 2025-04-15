@@ -4,19 +4,19 @@ cuml.accel.install()
 import cudf.pandas
 cudf.pandas.install()
 
-import pandas as pd
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
+import pandas as pd
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.metrics import confusion_matrix
-from sklearn.svm import SVC
-import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve
+from sklearn.model_selection import StratifiedKFold
+from sklearn.svm import SVC
 import joblib
+import logging
 import os
 import sys
-import logging
+import xgboost as xgb
 
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
@@ -111,6 +111,16 @@ for name, model in models.items():
 
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
+                fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
+                precision, recall, pr_thresholds = precision_recall_curve(y_test, y_probs)
+                roc_prc_df = pd.DataFrame({
+                    'fpr': fpr,
+                    'tpr': tpr,
+                    'precision': precision,
+                    'recall': recall
+                })
+                roc_prc_df.to_csv(f"models/{antibiotic_name}/{name}_roc_prc.tsv", sep='\t', index=True)
+
 
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
