@@ -112,7 +112,7 @@ for name, model in models.items():
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
                 fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
-                precision, recall, pr_thresholds = precision_recall_curve(y_test, y_probs)
+                precision, recall, pr_thresholds = precision_recall_curve(y_test, prob_vector)
                 roc_prc_df = pd.DataFrame({
                     'probability': prob_vector,
                     'fpr': fpr,
