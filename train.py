@@ -128,7 +128,7 @@ for name, model in models.items():
             score = model.score(X_test, y_test)
             logging.info(f"Fold {fold} score: {score}")
 
-            newrow = np.concatenate((score, cm.ravel()))
+            newrow = np.concatenate(([score], cm.ravel()))
             if hasattr(model, "predict_proba"):
                 newrow = np.concatenate((newrow, prob_vactor))
             data_collection.append(newrow)
