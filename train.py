@@ -130,7 +130,7 @@ for name, model in models.items():
 
             newrow = np.concatenate(([score], cm.ravel()))
             if hasattr(model, "predict_proba"):
-                newrow = np.concatenate((newrow, prob_vactor))
+                newrow = np.concatenate((newrow, prob_vector))
             data_collection.append(newrow)
             
             if name == "xgboost":
