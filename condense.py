@@ -26,13 +26,13 @@ X_bin = pd.read_pickle(X_bin_file)
 
 logging.info(f"Original number of features: {X_bin.shape[1]}")
 
-# selector = VarianceThreshold(threshold=0.1)
-# X_thresh = pd.DataFrame(
-#     selector.fit_transform(X_bin),
-#     columns=X_bin.columns[selector.get_support()]
-# )
+selector = VarianceThreshold(threshold=0.05) #try 0.1
+X_thresh = pd.DataFrame(
+    selector.fit_transform(X_bin),
+    columns=X_bin.columns[selector.get_support()]
+)
 
-# logging.info(f"After variance filtering: {X_thresh.shape[1]}")
+logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
 X_thresh = X_bin
 
