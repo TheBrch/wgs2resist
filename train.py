@@ -106,11 +106,16 @@ for name, model in models.items():
             
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
-                coef = model.feature_importances_
             else:
                 model.fit(X_train, y_train)
-                coef = model.coef_
             logging.info(f"Model fitted.")
+
+            if hasattr(model, "coef_"):
+                coef = model.coef_
+            else if hasattr(model, "feature_importances_"):
+                coef = model.feature_importances_
+            else:
+                coef = False
 
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
@@ -127,11 +132,12 @@ for name, model in models.items():
                 roc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_roc.tsv", sep='\t', index=True)
                 prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_prc.tsv", sep='\t', index=True)
 
-            features = pd.DataFrame({
-                'feature': featurenames,
-                'value': coef.ravel()
-            })
-            features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
+            if coef:
+                features = pd.DataFrame({
+                    'feature': featurenames,
+                    'value': coef.ravel()
+                })
+                features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
 
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
