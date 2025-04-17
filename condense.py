@@ -22,7 +22,7 @@ def log_exc(exc_type, exc_value, exc_tb):
 
 sys.excepthook = log_exc
 
-X_bin = pd.read_pickle(X_bin_file)
+X_bin = pd.read_feather(X_bin_file)
 
 logging.info(f"Original number of features: {X_bin.shape[1]}")
 
