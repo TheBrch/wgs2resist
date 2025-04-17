@@ -21,7 +21,7 @@ import xgboost as xgb
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 
-os.makedirs(f"models/{antibiotic_name}", exist_ok=True)
+os.makedirs(f"models/{antibiotic_name}/stats", exist_ok=True)
 
 logging.basicConfig(
     filename=f"models/{antibiotic_name}/training.log", 
@@ -36,6 +36,7 @@ def log_exc(exc_type, exc_value, exc_tb):
 sys.excepthook = log_exc
 
 X_bin = pd.read_pickle(X_bin_file)
+featurenames = X_bin.columns
 y = pd.read_pickle(sys.argv[2]).values.ravel()
 
 zero_n_one, counts = np.unique(y, return_counts=True)
@@ -105,8 +106,10 @@ for name, model in models.items():
             
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+                coef = model.feature_importances_
             else:
                 model.fit(X_train, y_train)
+                coef = model.coef_
             logging.info(f"Model fitted.")
 
             if hasattr(model, "predict_proba"):
@@ -121,9 +124,14 @@ for name, model in models.items():
                     'precision': precision,
                     'recall': recall
                 })
-                roc_df.to_csv(f"models/{antibiotic_name}/{name}_f{fold}_roc.tsv", sep='\t', index=True)
-                prc_df.to_csv(f"models/{antibiotic_name}/{name}_f{fold}_prc.tsv", sep='\t', index=True)
+                roc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_roc.tsv", sep='\t', index=True)
+                prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_prc.tsv", sep='\t', index=True)
 
+            features = pd.DataFrame({
+                'feature': featurenames,
+                'value': coef
+            })
+            prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
 
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
@@ -158,7 +166,7 @@ for name, model in models.items():
         df = pd.DataFrame(data_collection)
         column_names = ["Score", "TN", "FP", "FN", "TP"]
         df.columns = column_names
-        df.to_csv(f"models/{antibiotic_name}/{name}_crossval_results.tsv", sep='\t', index=True)
+        df.to_csv(f"models/{antibiotic_name}/stats/{name}_crossval_results.tsv", sep='\t', index=True)
 
     else:
         logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
