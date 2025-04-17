@@ -14,7 +14,10 @@ p_load(
 
 config <- read_yaml("config.yaml")
 gpam <- config$gpam_table
-bin_data <- read_feather(args[1])
+
+args <- commandArgs(trailingOnly = TRUE)
+file <- args[1]
+bin_data <- read_feather(file)
 
 gpam_data <- read_tsv(gpam, col_names = TRUE, show_col_types = FALSE) %>%
   column_to_rownames("Gene") %>%
@@ -30,4 +33,5 @@ if (!dir.exists("./joint_data")) {
   dir.create("./joint_data", recursive = TRUE)
 }
 
-write_feather(joint, "./joint_data/Amoxicillin_Clavulanate.feather")
+filename <- gsub(".*/(.*)", "\\1", file)
+write_feather(joint, paste0("./joint_data/", filename))
