@@ -115,7 +115,7 @@ for name, model in models.items():
             elif hasattr(model, "feature_importances_"):
                 coef = model.feature_importances_
             else:
-                coef = False
+                coef = np.array([False])
 
             if hasattr(model, "predict_proba"):
                 prob_vector = model.predict_proba(X_test)[:, 1]
@@ -132,7 +132,7 @@ for name, model in models.items():
                 roc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_roc.tsv", sep='\t', index=True)
                 prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_prc.tsv", sep='\t', index=True)
 
-            if coef:
+            if np.any(coef != False):
                 features = pd.DataFrame({
                     'feature': featurenames,
                     'value': coef.ravel()
