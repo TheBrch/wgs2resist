@@ -31,7 +31,8 @@ roc <- list(
   y = 'TPR'
 )
 
-name = "Sulfonamide"
+args <- commandArgs(trailingOnly = TRUE)
+name = args[1]
 pathe <- paste0("models/", name, "/stats/")
 
 for (graphtype in list(prc, roc)){
