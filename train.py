@@ -131,7 +131,7 @@ for name, model in models.items():
                 'feature': featurenames,
                 'value': coef.ravel()
             })
-            prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
+            features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
 
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
