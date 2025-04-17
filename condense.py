@@ -34,8 +34,6 @@ X_thresh = pd.DataFrame(
 
 logging.info(f"After variance filtering: {X_thresh.shape[1]}")
 
-X_thresh = X_bin
-
 @njit(parallel=True)
 def get_correlated(corr_matrix):
     threshold=0.9
