@@ -23,7 +23,7 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
     across(
       everything(),
       ~ ifelse(
-        grepl("^(R|I|S|R\\(Inh\\))$", .),  # Check if value contains R, I, or S
+        grepl("^(R|I|S|R\\(Inh\\))$", .),
         as.numeric(gsub('^(R|I|R\\(Inh\\))$', '0', gsub('^S$', '1', .))),
         .
       )
@@ -46,7 +46,14 @@ if (!dir.exists("./training_data")) {
   dir.create("./training_data", recursive = TRUE)
 }
 
-colSums(!is.na(sus_data))
+variances <- apply(sus_data, 2, function(x) var(x, na.rm = TRUE))
+valid <- variances > 0.05
+
+print("The following sample sets are not diverse enough to be significant:")
+print(variances[variances <= 0.05])
+sus_data <- sus_data[, valid]
+
+print(colSums(!is.na(sus_data)))
 
 for (i in colnames(sus_data)) {
   n <- gsub("\\/", "_", i)
@@ -57,8 +64,7 @@ for (i in colnames(sus_data)) {
     rename("Susceptible" = i) %>%
     rownames_to_column("rownames")
   merged_data <- data %>%
-    left_join(tsv_data, by = "rownames") %>%
-    column_to_rownames("rownames")
+    left_join(tsv_data, by = "rownames")
   assign(n, merged_data)
   write.table(
     merged_data,
