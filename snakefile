@@ -50,7 +50,7 @@ rule binarize:
 rule join:
     input:
         table="binarized_data/{ab}.feather",
-        gpam=gpam_table
+        gpa=gpam
     output:
         "joint_data/{ab}.feather"
     conda:
