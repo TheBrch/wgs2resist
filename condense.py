@@ -53,7 +53,9 @@ to_drop_ind = get_correlated(corr_matrix.values)
 logging.info(f"Found {len(to_drop_ind)} highly correlated SNP bits")
 
 to_drop = corr_matrix.columns[to_drop_ind]
-corr_matrix[to_drop].to_feather(f"condensed_data/{antibiotic_name}_hicorr.feather")
+hicorr = corr_matrix[to_drop]
+hicorr.reset_index(inplace=True)
+hicorr.to_feather(f"condensed_data/{antibiotic_name}_hicorr.feather")
 logging.info(f"Exported highly correlated SNP bit info.")
 
 X_reduced = X_thresh.drop(columns=to_drop)
