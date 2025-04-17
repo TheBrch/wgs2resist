@@ -142,8 +142,6 @@ for name, model in models.items():
             logging.info(f"Fold {fold} score: {score}")
 
             newrow = np.concatenate(([score], cm.ravel()))
-            if hasattr(model, "predict_proba"):
-                newrow = np.concatenate((newrow, prob_vector))
             data_collection.append(newrow)
             
             if name == "xgboost":
