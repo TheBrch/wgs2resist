@@ -129,7 +129,7 @@ for name, model in models.items():
 
             features = pd.DataFrame({
                 'feature': featurenames,
-                'value': coef
+                'value': coef.ravel()
             })
             prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
 
