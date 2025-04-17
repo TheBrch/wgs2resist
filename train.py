@@ -112,7 +112,7 @@ for name, model in models.items():
 
             if hasattr(model, "coef_"):
                 coef = model.coef_
-            else if hasattr(model, "feature_importances_"):
+            elif hasattr(model, "feature_importances_"):
                 coef = model.feature_importances_
             else:
                 coef = False
