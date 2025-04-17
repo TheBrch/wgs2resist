@@ -5,6 +5,7 @@ if os.path.exists('config.yaml'):
 
 source=config['source_table']
 suscept=config['suscept_table']
+gpam=config['gpam_table']
 
 def get_antibiotics (x):
     reformat_dir = checkpoints.reformat.get().output[0]
@@ -39,17 +40,28 @@ rule binarize:
         script="binarize.py",
         table="training_data/{ab}.tsv"
     output:
-        "binarized_data/{ab}.pkl",
+        "binarized_data/{ab}.feather",
         "binarized_data/{ab}_lab.pkl"
     conda:
         "predictor"
     shell:
         "python3 {input.script} {input.table}"
 
+rule join:
+    input:
+        table="binarized_data/{ab}.feather",
+        gpam=gpam_table
+    output:
+        "joint_data/{ab}.feather"
+    conda:
+        "R"
+    shell:
+        "Rscript {input.script} {input.table}"
+
 rule condense:
     input:
         script="condense.py",
-        table="binarized_data/{ab}.pkl"
+        table="binarized_data/{ab}.feather"
     output:
         "condensed_data/{ab}.pkl"
     conda:
