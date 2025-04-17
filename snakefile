@@ -49,6 +49,7 @@ rule binarize:
 
 rule join:
     input:
+        script="snp_gpa_join.R",
         table="binarized_data/{ab}.feather",
         gpa=gpam
     output:
