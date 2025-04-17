@@ -21,8 +21,8 @@ def get_antibiotics (x):
 
 rule all:
     input:
-        # lambda x: expand("models/{ab}/{model}.pkl", ab=get_antibiotics(x), model=["gaussian","svm","logistic"])#,
-        lambda x: expand("condensed_data/{ab}.pkl", ab=get_antibiotics(x))
+        lambda x: expand("models/{ab}/{model}.pkl", ab=get_antibiotics(x), model=["gaussian","svm","logistic"])#,
+        # lambda x: expand("condensed_data/{ab}.pkl", ab=get_antibiotics(x))
 
 checkpoint reformat:
     input:
