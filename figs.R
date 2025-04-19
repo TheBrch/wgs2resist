@@ -31,8 +31,9 @@ roc <- list(
   y = 'TPR'
 )
 
-args <- commandArgs(trailingOnly = TRUE)
-name = args[1]
+# args <- commandArgs(trailingOnly = TRUE)
+# name = args[1]
+name = "Trimethoprim_sulfamethoxazole"
 pathe <- paste0("models/", name, "/stats/")
 
 for (graphtype in list(prc, roc)){
@@ -46,7 +47,7 @@ for (graphtype in list(prc, roc)){
         show_col_types = FALSE
       )
       
-      fold_data$fold <- as.character(fold)
+      fold_data$fold <- as.character(fold+1)
       fold_data$model <- model
       l <- rbind(l, fold_data)
     }
@@ -89,22 +90,54 @@ for (model in c("logistic", "xgboost")){
       show_col_types = FALSE
     )
     
-    fold_data$fold <- as.character(fold)
+    fold_data$fold <- as.character(fold+1)
     fold_data$model <- model
     l <- rbind(l, fold_data)
   }
 }
-  
-l <- l %>%
-  filter(value != 0) %>%
-  group_by(model) %>%
-  mutate(feature = fct_reorder(feature, abs(value), .desc = TRUE)) %>%
-  slice_max(abs(value), n = 10) %>%
-  ungroup()
 
-plotvar <- ggplot(l, aes(x = fct_reorder(feature, abs(value), .desc = TRUE), y = value, fill = fold)) +
+#filter out features that appear only once
+features_in_multiple_folds <- l %>%
+  filter(value != 0) %>%
+  distinct(feature, fold) %>%
+  count(feature) %>%
+  filter(n > 1) %>%
+  pull(feature)
+
+
+# select all feature names that appear more than once throughout all folds, for each model
+selected <- l %>%
+  filter(feature %in% features_in_multiple_folds) %>%
+  group_by(model, feature) %>%
+  summarise(max_value = max(value, na.rm = TRUE), .groups = "drop") %>%
+  # group_by(model) %>%
+  # slice_max(order_by = max_value, n = 10, with_ties = FALSE) %>%
+  # ungroup() %>%
+  pull(feature)
+
+# filter by selected feature names
+l <- l %>%
+  filter(feature %in% selected)
+
+# sort the features by normalized values, limit the number
+feature_order <- l %>%
+  group_by(model) %>%
+  mutate(norm_value = value / max(abs(value), na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(feature) %>%
+  summarise(max_abs = max(abs(norm_value)), .groups = "drop") %>%
+  slice_max(order_by = max_abs, n = 30, with_ties = FALSE)
+
+#fill in the data from the main dataset, remove 0 value entries
+l <- l %>%
+  right_join(feature_order, by = "feature") %>%
+  mutate(feature = fct_reorder(feature, max_abs, .desc = TRUE)) %>%
+  filter(value != 0)
+
+#plot out
+plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
   geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~ model, ncol = 2) +
+  facet_wrap(~ model, ncol = 2, scales = "free_y") +
   labs(
     x = "Feature",
     y = "Value",
@@ -113,6 +146,7 @@ plotvar <- ggplot(l, aes(x = fct_reorder(feature, abs(value), .desc = TRUE), y =
   theme_minimal() +
   theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
+#export to file
 ggsave(
   plot = plotvar,
   filename = paste0(pathe, "/figs/", name, "_feature_importance.png"),
