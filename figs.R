@@ -31,9 +31,8 @@ roc <- list(
   y = 'TPR'
 )
 
-# args <- commandArgs(trailingOnly = TRUE)
-# name = args[1]
-name = "Trimethoprim_sulfamethoxazole"
+args <- commandArgs(trailingOnly = TRUE)
+name = args[1]
 pathe <- paste0("models/", name, "/stats/")
 
 for (graphtype in list(prc, roc)){
