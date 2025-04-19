@@ -16,7 +16,8 @@ p_load(
   proxy,
   RColorBrewer,
   tidyr,
-  forcats
+  forcats,
+  ggtext
 )
 
 prc <- list(
@@ -98,35 +99,32 @@ for (model in c("logistic", "xgboost")){
 #filter out features that appear only once
 features_in_multiple_folds <- l %>%
   filter(value != 0) %>%
-  distinct(feature, fold) %>%
-  count(feature) %>%
+  distinct(feature, model, fold) %>%
+  count(feature, model) %>%
   filter(n > 1) %>%
-  pull(feature)
-
-
-# select all feature names that appear more than once throughout all folds, for each model
-selected <- l %>%
-  filter(feature %in% features_in_multiple_folds) %>%
-  group_by(model, feature) %>%
-  summarise(max_value = max(value, na.rm = TRUE), .groups = "drop") %>%
-  # group_by(model) %>%
-  # slice_max(order_by = max_value, n = 10, with_ties = FALSE) %>%
-  # ungroup() %>%
   pull(feature)
 
 # filter by selected feature names
 l <- l %>%
-  filter(feature %in% selected)
+  filter(feature %in% features_in_multiple_folds)
 
 # sort the features by normalized values, limit the number
 feature_order <- l %>%
   group_by(model) %>%
   mutate(norm_value = value / max(abs(value), na.rm = TRUE)) %>%
   ungroup() %>%
+  group_by(feature, model) %>%
+  summarise(max_abs = max(abs(norm_value)), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(model) %>%
+  slice_max(order_by = max_abs, prop = 0.1, with_ties = FALSE) %>%
   group_by(feature) %>%
-  summarise(max_abs = max(abs(norm_value)), .groups = "drop") %>%
-  slice_max(order_by = max_abs, n = 30, with_ties = FALSE)
+  summarise(max_abs = max(max_abs), number=n(), .groups = "keep")
 
+appears_in_both <- feature_order %>%
+  filter(number > 1) %>%
+  pull(feature)
+  
 #fill in the data from the main dataset, remove 0 value entries
 l <- l %>%
   right_join(feature_order, by = "feature") %>%
@@ -143,13 +141,21 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
     title = paste0(name, " feature importance")
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  scale_x_discrete(
+    labels = function(x) {
+      ifelse(x %in% appears_in_both, 
+             paste0("<span style='color:red'>", x, "</span>"), 
+             x)
+    }
+  ) +
+  theme(axis.text.x = element_markdown())
 
 #export to file
 ggsave(
   plot = plotvar,
   filename = paste0(pathe, "/figs/", name, "_feature_importance.png"),
-  width = 8,
+  width = 11,
   height = 6,
   dpi = 300,
   bg = "white",
