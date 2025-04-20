@@ -17,7 +17,8 @@ p_load(
   RColorBrewer,
   tidyr,
   forcats,
-  ggtext
+  ggtext,
+  reshape2
 )
 
 prc <- list(
@@ -52,6 +53,7 @@ for (graphtype in list(prc, roc)){
       l <- rbind(l, fold_data)
     }
   }
+
   
   plotvar <- ggplot(l, aes(x = .data[[tolower(graphtype[["x"]])]], y = .data[[tolower(graphtype[["y"]])]])) +
     geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
@@ -108,7 +110,7 @@ features_in_multiple_folds <- l %>%
 l <- l %>%
   filter(feature %in% features_in_multiple_folds)
 
-# sort the features by normalized values, limit the number
+# sort the features by normalized values, limit the number to 10%
 feature_order <- l %>%
   group_by(model) %>%
   mutate(norm_value = value / max(abs(value), na.rm = TRUE)) %>%
@@ -162,28 +164,34 @@ ggsave(
   create.dir = TRUE
 )
 
-# correlation <- read_feather(
-#   "condensed_data/Sulfonamide_hicorr.feather"
-# ) %>%
-#   column_to_rownames('index') %>%
-#   mutate(across(everything(), ~ round(as.numeric(.), 3)))
-# 
-# 
-# filtered <- correlation[
-#   correlation %>%
-#     mutate(
-#       has_high = apply(., 1, function(row) any(row > 0.9, na.rm = TRUE))
-#       ) %>%
-#     pull(has_high),
-# ] %>%
-#   as.matrix()
-# 
+
+
+
+correlation <- read_feather(
+  paste0("condensed_data/", name, "_hicorr.feather")
+) %>%
+  column_to_rownames('index') %>%
+  mutate(across(everything(), ~ round(as.numeric(.), 3)))
+
+
+filtered <- correlation[
+  correlation %>%
+    mutate(
+      has_high = apply(., 1, function(row) any(row > 0.9, na.rm = TRUE))
+      ) %>%
+    pull(has_high),
+] %>%
+  # rownames_to_column("rownames") %>%
+  as.matrix()
+
+melted_filtered <- melt(filtered)
+
 # pheatmap(
 #   filtered,
-#   filename = "dang.png",
-#   fontsize = 7,
-#   cluster_rows = TRUE,
-#   cluster_cols = TRUE,
+#   # filename = "dang.png",
+#   # fontsize = 7,
+#   # cluster_rows = TRUE,
+#   # cluster_cols = TRUE,
 #   show_colnames = TRUE,
 #   show_rownames = TRUE,
 #   color = colorRampPalette(c("white","blue"))(100)
@@ -191,3 +199,24 @@ ggsave(
 
 
 
+heatmap_plot <- ggplot(melted_filtered, aes(x=Var1, y=Var2, fill=value)) +
+  geom_tile() +
+  scale_fill_gradientn(colors=colorRampPalette(c("white","blue"))(100)) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate column labels for better readability
+    panel.grid = element_blank(),  # Remove grid lines
+    panel.border = element_blank(),  # Remove border
+    axis.title = element_blank()    # Remove axis titles
+  ) +
+  labs(fill = "Value")
+
+ggsave(
+  plot = heatmap_plot,
+  filename = paste0(pathe, "/figs/", name, "_corr.png"),
+  width = 15,
+  height = 15,
+  dpi = 300,
+  bg = "white",
+  create.dir = TRUE
+)
