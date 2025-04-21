@@ -21,8 +21,8 @@ p_load(
   reshape2
 )
 
-prc <- list(
-  name = 'prc',
+pr <- list(
+  name = 'pr',
   x = 'Recall',
   y = 'Precision'
 )
@@ -37,31 +37,59 @@ args <- commandArgs(trailingOnly = TRUE)
 name = args[1]
 pathe <- paste0("models/", name, "/stats/")
 
-for (graphtype in list(prc, roc)){
+for (graphtype in list(pr, roc)){
   l <- data.frame()
+  met <- data.frame()
   for (model in c("logistic", "gaussian", "svm", "xgboost")){
-    for (fold in 0:4) {
+    model_data <- read_tsv(
+      paste0(pathe, model, "_", graphtype[["name"]],".tsv"),
+      col_names = TRUE,
+      show_col_types = FALSE
+    )
       
-      fold_data <- read_tsv(
-        paste0(pathe, model, "_f", fold, "_", graphtype[["name"]],".tsv"),
-        col_names = TRUE,
-        show_col_types = FALSE
-      )
-      
-      fold_data$fold <- as.character(fold+1)
-      fold_data$model <- model
-      l <- rbind(l, fold_data)
-    }
+    model_data$model <- model
+    l <- rbind(l, model_data)
+    
+    metrics <- read_tsv(
+      paste0(pathe, model, "_", "crossval_results.tsv"),
+      col_names = TRUE,
+      show_col_types = FALSE
+    )
+    metrics$model <- model
+    met <- rbind(met, metrics)
   }
-
+  l$fold <- factor(l$fold + 1)
+  met$fold <- factor(met$Fold + 1)
+  
+  met_labels <- met %>%
+    mutate(
+      auc_score = get(paste0(toupper(graphtype[["name"]]), "_AUC")),
+      label = paste0("AUC: ", sprintf("%.3f", auc_score))
+    )
   
   plotvar <- ggplot(l, aes(x = .data[[tolower(graphtype[["x"]])]], y = .data[[tolower(graphtype[["y"]])]])) +
-    geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
-                 color = "gray", 
-                 linetype = "dotted") +
+    ( if (graphtype[["name"]] == "roc") {
+      geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
+                   color = "gray",
+                   linetype = "dotted")
+      } else {
+        NULL
+      }) +
     geom_line(aes(color = fold)) +
     geom_point(aes(color = fold)) +
     geom_smooth(method = "lm", se = FALSE, color = "blue", formula = y ~ poly(x, 3)) +
+    geom_text(
+      data = met_labels,
+      aes(
+        x = 0.95,
+        y = 0.25 - (0.07 * (as.numeric(fold) - 1) ),
+        label = label,
+        color = fold
+      ),
+      hjust = 1,
+      size = 3,
+      inherit.aes = FALSE
+    ) +
     facet_wrap(~ model, ncol = 2) +
     labs(
       x = graphtype[["x"]],
@@ -114,10 +142,8 @@ l <- l %>%
 feature_order <- l %>%
   group_by(model) %>%
   mutate(norm_value = value / max(abs(value), na.rm = TRUE)) %>%
-  ungroup() %>%
   group_by(feature, model) %>%
   summarise(max_abs = max(abs(norm_value)), .groups = "keep") %>%
-  ungroup() %>%
   group_by(model) %>%
   slice_max(order_by = max_abs, prop = 0.1, with_ties = FALSE) %>%
   group_by(feature) %>%
@@ -164,59 +190,72 @@ ggsave(
   create.dir = TRUE
 )
 
-
-
-
 correlation <- read_feather(
   paste0("condensed_data/", name, "_hicorr.feather")
 ) %>%
   column_to_rownames('index') %>%
   mutate(across(everything(), ~ round(as.numeric(.), 3)))
 
+toptops <- correlation[appears_in_both,] %>%
+  t() %>%
+  as.data.frame()
 
-filtered <- correlation[
-  correlation %>%
+filtered <- toptops[
+  toptops %>%
     mutate(
-      has_high = apply(., 1, function(row) any(row > 0.9, na.rm = TRUE))
+      has_high = apply(., 1, function(row) any(abs(row) > 0.9, na.rm = TRUE))
       ) %>%
     pull(has_high),
 ] %>%
-  # rownames_to_column("rownames") %>%
-  as.matrix()
+  t()
 
-melted_filtered <- melt(filtered)
+# melted_filtered <- melt(filtered)
 
-# pheatmap(
-#   filtered,
-#   # filename = "dang.png",
-#   # fontsize = 7,
-#   # cluster_rows = TRUE,
-#   # cluster_cols = TRUE,
-#   show_colnames = TRUE,
-#   show_rownames = TRUE,
-#   color = colorRampPalette(c("white","blue"))(100)
+# heatmap_plot <- ggplot(melted_filtered, aes(x=Var1, y=Var2, fill=value)) +
+#   geom_tile() +
+#   scale_fill_gradient2(
+#     low = "red",
+#     mid = "white",
+#     high = "blue",
+#     midpoint = 0,
+#     limits = c(-1, 1)
+#   ) + 
+#   theme_minimal() +
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),
+#     panel.grid = element_blank(),
+#     panel.border = element_blank(),
+#     axis.title = element_blank()
+#   ) +
+#   labs(fill = "Value")
+
+# ggsave(
+#   plot = heatmap_plot,
+#   filename = paste0(pathe, "/figs/", name, "_corr.png"),
+#   width = 15,
+#   height = 15,
+#   dpi = 300,
+#   bg = "white",
+#   create.dir = TRUE
 # )
 
-
-
-heatmap_plot <- ggplot(melted_filtered, aes(x=Var1, y=Var2, fill=value)) +
-  geom_tile() +
-  scale_fill_gradientn(colors=colorRampPalette(c("white","blue"))(100)) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate column labels for better readability
-    panel.grid = element_blank(),  # Remove grid lines
-    panel.border = element_blank(),  # Remove border
-    axis.title = element_blank()    # Remove axis titles
-  ) +
-  labs(fill = "Value")
-
-ggsave(
-  plot = heatmap_plot,
-  filename = paste0(pathe, "/figs/", name, "_corr.png"),
-  width = 15,
-  height = 15,
-  dpi = 300,
-  bg = "white",
-  create.dir = TRUE
+pheatmap(
+  filtered,
+  main = paste0(name, " top feature correlations")
+  color = colorRampPalette(c("red", "white", "blue"))(100),
+  breaks = seq(-1, 1, length.out = 101),
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  display_numbers = TRUE,
+  number_format = "%.2f",
+  fontsize_number = 6,
+  legend = TRUE,
+  fontsize = 9,
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  angle_col = 45,
+  border_color = NA,
+  width = 2.5 + (ncol(filtered) * 0.25),
+  height = 2.5 + (nrow(filtered) * 0.2),
+  filename = paste0(pathe, "/figs/", name, "_corr.png")
 )
