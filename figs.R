@@ -241,7 +241,7 @@ filtered <- toptops[
 
 pheatmap(
   filtered,
-  main = paste0(name, " top feature correlations")
+  main = paste0(name, " top feature correlations"),
   color = colorRampPalette(c("red", "white", "blue"))(100),
   breaks = seq(-1, 1, length.out = 101),
   cluster_rows = TRUE,
