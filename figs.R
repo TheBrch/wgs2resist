@@ -75,6 +75,7 @@ for (graphtype in list(pr, roc)){
       } else {
         NULL
       }) +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
     geom_line(aes(color = fold)) +
     geom_point(aes(color = fold)) +
     geom_smooth(method = "lm", se = FALSE, color = "blue", formula = y ~ poly(x, 3)) +

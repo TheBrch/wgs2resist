@@ -22,7 +22,7 @@ def get_antibiotics (x):
 rule all:
     input:
         # lambda x: expand("models/{ab}/{model}.pkl", ab=get_antibiotics(x), model=["gaussian", "svm", "logistic"])#,
-        lambda x: expand("models/{ab}/stats/figs/{ab}_prc.png", ab=get_antibiotics(x))#,
+        lambda x: expand("models/{ab}/stats/figs/{ab}_pr.png", ab=get_antibiotics(x))#,
         # lambda x: expand("condensed_data/{ab}.pkl", ab=get_antibiotics(x))
 
 checkpoint reformat:
@@ -91,7 +91,7 @@ rule figs:
         script="figs.R",
         src=expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic"]),
     output:
-        "models/{ab}/stats/figs/{ab}_prc.png"
+        "models/{ab}/stats/figs/{ab}_pr.png"
     conda:
         "R"
     shell:
