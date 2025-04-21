@@ -255,8 +255,8 @@ if (ncol(filtered) == TRUE) {
     show_colnames = TRUE,
     angle_col = 45,
     border_color = NA,
-    width = 2.5 + (ncol(filtered) * 0.25),
-    height = 2.5 + (nrow(filtered) * 0.2),
+    cellwidth = 20,
+    cellheight = 20,
     filename = paste0(pathe, "/figs/", name, "_corr.png")
   )
 }
