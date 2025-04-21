@@ -41,12 +41,12 @@ def get_correlated(corr_matrix):
     to_drop = np.zeros(n, dtype=np.bool_)
     for i in prange(n):
         for j in range(i + 1, n):
-            if corr_matrix[i, j] > threshold:
+            if abs(corr_matrix[i, j]) > threshold:
                 to_drop[j] = True
     return np.nonzero(to_drop)[0]
 
 
-corr_matrix = X_thresh.corr().astype(np.float32).abs()
+corr_matrix = X_thresh.corr().astype(np.float32)
 logging.info(f"Generated correlation matrix.")
 
 to_drop_ind = get_correlated(corr_matrix.values)
