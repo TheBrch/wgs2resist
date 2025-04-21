@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve
+from sklearn.metrics import auc, confusion_matrix, f1_score, precision_recall_curve, precision_score, recall_score, roc_curve
 from sklearn.model_selection import StratifiedKFold
 from sklearn.svm import SVC
 import joblib
@@ -93,7 +93,9 @@ for name, model in models.items():
     logging.info(f"\nCross-validation of {name}...\n")
     if splitcount > 1:
         skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
-        data_collection = []
+        data_collection = pd.DataFrame()
+        all_pr = pd.DataFrame()
+        all_roc = pd.DataFrame()
         for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
             logging.info(f"{name} - Fold {fold}...\n")
 
@@ -117,27 +119,30 @@ for name, model in models.items():
             else:
                 coef = np.array([False])
 
-            if hasattr(model, "predict_proba"):
-                prob_vector = model.predict_proba(X_test)[:, 1]
-                fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
-                precision, recall, pr_thresholds = precision_recall_curve(y_test, prob_vector)
-                roc_df = pd.DataFrame({
-                    'fpr': fpr,
-                    'tpr': tpr
-                })
-                prc_df = pd.DataFrame({
-                    'precision': precision,
-                    'recall': recall
-                })
-                roc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_roc.tsv", sep='\t', index=True)
-                prc_df.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_prc.tsv", sep='\t', index=True)
+            prob_vector = model.predict_proba(X_test)[:, 1]
+            fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
+            precision, recall, pr_thresholds = precision_recall_curve(y_test, prob_vector)
+            pr_thresholds = np.append(pr_thresholds, 0)
+            roc_df = pd.DataFrame({
+                'fpr': fpr,
+                'tpr': tpr,
+                'threshold': roc_thresholds
+            })
+            roc_df['fold'] = fold
+
+            prc_df = pd.DataFrame({
+                'precision': precision,
+                'recall': recall,
+                'threshold': pr_thresholds[:len(precision)]
+            })
+            prc_df['fold'] = fold
 
             if np.any(coef != False):
                 features = pd.DataFrame({
                     'feature': featurenames,
                     'value': coef.ravel()
                 })
-                features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=True)
+                features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=False)
 
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
@@ -155,8 +160,22 @@ for name, model in models.items():
             score = model.score(X_test, y_test)
             logging.info(f"Fold {fold} score: {score}")
 
-            newrow = np.concatenate(([score], cm.ravel()))
-            data_collection.append(newrow)
+            raveled_cm = pd.DataFrame([cm.ravel()], columns=["TN", "FP", "FN", "TP"])
+
+            newdf = pd.DataFrame({
+                'Fold' : [fold],
+                'Score' : [score],
+                'F1' : [f1_score(y_test, y_pred)],
+                'ROC_AUC' : [auc(fpr, tpr)],
+                'PR_AUC' : [auc(recall, precision)],
+                'Precision@Thresh' : [precision_score(y_test, y_pred)],
+                'Recall@Thresh' : [recall_score(y_test, y_pred)]
+            })
+
+            newdf = pd.concat([newdf, raveled_cm], axis=1)
+            data_collection = pd.concat([data_collection, newdf], ignore_index=True)
+            all_pr = pd.concat([all_pr, prc_df], ignore_index=True)
+            all_roc = pd.concat([all_roc, roc_df], ignore_index=True)
             
             if name == "xgboost":
                 if score > best_xgb_score:
@@ -169,10 +188,8 @@ for name, model in models.items():
             joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
             logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
 
-        df = pd.DataFrame(data_collection)
-        column_names = ["Score", "TN", "FP", "FN", "TP"]
-        df.columns = column_names
-        df.to_csv(f"models/{antibiotic_name}/stats/{name}_crossval_results.tsv", sep='\t', index=True)
-
+        data_collection.to_csv(f"models/{antibiotic_name}/stats/{name}_crossval_results.tsv", sep='\t', index=False)
+        all_roc.to_csv(f"models/{antibiotic_name}/stats/{name}_roc.tsv", sep='\t', index=False)
+        all_pr.to_csv(f"models/{antibiotic_name}/stats/{name}_pr.tsv", sep='\t', index=False)
     else:
         logging.info(f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable.")
