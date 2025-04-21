@@ -238,24 +238,25 @@ filtered <- toptops[
 #   bg = "white",
 #   create.dir = TRUE
 # )
-
-pheatmap(
-  filtered,
-  main = paste0(name, " top feature correlations"),
-  color = colorRampPalette(c("red", "white", "blue"))(100),
-  breaks = seq(-1, 1, length.out = 101),
-  cluster_rows = nrow(filtered) > 2,
-  cluster_cols = ncol(filtered) > 2,
-  display_numbers = TRUE,
-  number_format = "%.2f",
-  fontsize_number = 6,
-  legend = TRUE,
-  fontsize = 9,
-  show_rownames = TRUE,
-  show_colnames = TRUE,
-  angle_col = 45,
-  border_color = NA,
-  width = 2.5 + (ncol(filtered) * 0.25),
-  height = 2.5 + (nrow(filtered) * 0.2),
-  filename = paste0(pathe, "/figs/", name, "_corr.png")
-)
+if (ncol(filtered) == TRUE) {
+  pheatmap(
+    filtered,
+    main = paste0(name, " top feature correlations"),
+    color = colorRampPalette(c("red", "white", "blue"))(100),
+    breaks = seq(-1, 1, length.out = 101),
+    cluster_rows = nrow(filtered) > 2,
+    cluster_cols = ncol(filtered) > 2,
+    display_numbers = TRUE,
+    number_format = "%.2f",
+    fontsize_number = 6,
+    legend = TRUE,
+    fontsize = 9,
+    show_rownames = TRUE,
+    show_colnames = TRUE,
+    angle_col = 45,
+    border_color = NA,
+    width = 2.5 + (ncol(filtered) * 0.25),
+    height = 2.5 + (nrow(filtered) * 0.2),
+    filename = paste0(pathe, "/figs/", name, "_corr.png")
+  )
+}
