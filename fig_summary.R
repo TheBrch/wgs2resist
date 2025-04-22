@@ -65,6 +65,8 @@ for (prop in props) {
     fontsize_number = 6,
     number_color = "black",
     fontsize = 8,
+    width = 2.5 + (ncol(matrix) * 0.5),
+    height = (nrow(matrix) * 0.5),
     cellwidth = 20,
     cellheight = 20,
     angle_col = 45,
