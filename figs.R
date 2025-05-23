@@ -239,10 +239,10 @@ filtered <- toptops[
 #   bg = "white",
 #   create.dir = TRUE
 # )
-if (ncol(filtered) == TRUE) {
+if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
   pheatmap(
     filtered,
-    main = paste0(name, " top feature correlations"),
+    main = paste0(name, "\ntop feature correlations"),
     color = colorRampPalette(c("red", "white", "blue"))(100),
     breaks = seq(-1, 1, length.out = 101),
     cluster_rows = nrow(filtered) > 2,
@@ -256,8 +256,8 @@ if (ncol(filtered) == TRUE) {
     show_colnames = TRUE,
     angle_col = 45,
     border_color = NA,
-    width = 2.5 + (ncol(filtered) * 17),
-    height = 2.5 + (nrow(filtered) * 18),
+    width = 4 + (ncol(filtered) * 0.5),
+    height = 2.5 + (nrow(filtered) * 0.5),
     cellwidth = 20,
     cellheight = 20,
     filename = paste0(pathe, "/figs/", name, "_corr.png")
