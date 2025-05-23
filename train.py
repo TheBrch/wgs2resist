@@ -122,7 +122,13 @@ for name, model in models.items():
             prob_vector = model.predict_proba(X_test)[:, 1]
             fpr, tpr, roc_thresholds = roc_curve(y_test, prob_vector)
             precision, recall, pr_thresholds = precision_recall_curve(y_test, prob_vector)
-            pr_thresholds = np.append(pr_thresholds, 0)
+            pr_thresholds = np.append(pr_thresholds, min(prob_vector) - 1e-6)
+
+            f1_scores = 2 * precision * recall / (precision + recall)
+            f1_scores = np.nan_to_num(f1_scores)
+
+            best_threshold = pr_thresholds[f1_scores.argmax()]
+
             roc_df = pd.DataFrame({
                 'fpr': fpr,
                 'tpr': tpr,
@@ -144,7 +150,8 @@ for name, model in models.items():
                 })
                 features.to_csv(f"models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv", sep='\t', index=False)
 
-            y_pred = model.predict(X_test)
+            # y_pred = model.predict(X_test)
+            y_pred = (prob_vector >= best_threshold).astype(int)
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
 
             logging.info(
@@ -171,6 +178,7 @@ for name, model in models.items():
                 'Precision@Thresh' : [precision_score(y_test, y_pred)],
                 'Recall@Thresh' : [recall_score(y_test, y_pred)]
             })
+            newdf['Thresh'] = best_threshold
 
             newdf = pd.concat([newdf, raveled_cm], axis=1)
             data_collection = pd.concat([data_collection, newdf], ignore_index=True)
