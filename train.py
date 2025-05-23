@@ -176,9 +176,9 @@ for name, model in models.items():
                 'ROC_AUC' : [auc(fpr, tpr)],
                 'PR_AUC' : [auc(recall, precision)],
                 'Precision@Thresh' : [precision_score(y_test, y_pred)],
-                'Recall@Thresh' : [recall_score(y_test, y_pred)]
+                'Recall@Thresh' : [recall_score(y_test, y_pred)],
+                'Thresh' : [best_threshold]
             })
-            newdf['Thresh'] = best_threshold
 
             newdf = pd.concat([newdf, raveled_cm], axis=1)
             data_collection = pd.concat([data_collection, newdf], ignore_index=True)

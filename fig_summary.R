@@ -44,6 +44,7 @@ for (name in folders) {
         pr_auc = mean(PR_AUC, na.rm = TRUE),
         precision_at_thresh = mean(`Precision@Thresh`, na.rm = TRUE),
         recall_at_thresh = mean(`Recall@Thresh`, na.rm = TRUE),
+        best_thresh = mean(`Thresh`, na.rm = TRUE),
         .groups = "keep"
       )
     l <- rbind(l, m)
