@@ -1,8 +1,8 @@
-import cuml.accel
-cuml.accel.install()
+# import cuml.accel
+# cuml.accel.install()
 
-import cudf.pandas
-cudf.pandas.install()
+# import cudf.pandas
+# cudf.pandas.install()
 
 import numpy as np
 import pandas as pd
@@ -61,7 +61,7 @@ def define_xgb():
         learning_rate=0.1,
         eval_metric="logloss",
         n_jobs=-1,
-        device="cuda",
+        # device="cuda",
         callbacks=[early_stop]
     )
 
