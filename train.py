@@ -47,38 +47,48 @@ label_stats = pd.DataFrame({
     'Ratio': [f"{(count / sum(counts)):.2f}" for count in counts]
 })
 
-def define_xgb():
-    early_stop = xgb.callback.EarlyStopping(
-        rounds=10,
-        metric_name='logloss',
-        save_best=True,
-        maximize=False
-    )
+def define_model(name):
+    match name:
+        case "xgboost":
+            early_stop = xgb.callback.EarlyStopping(
+                rounds=10,
+                metric_name='logloss',
+                save_best=True,
+                maximize=False
+            )
+            return xgb.XGBClassifier(
+                n_estimators=1000,
+                max_depth=10,
+                learning_rate=0.1,
+                eval_metric="logloss",
+                n_jobs=-1,
+                # device="cuda",
+                callbacks=[early_stop]
+            )
+        case "gaussian":
+            return GaussianProcessClassifier(
+                kernel=RBF(length_scale=1.0),
+                n_restarts_optimizer=10
+            )
+        case "svm":
+            return SVC(C=1.0, kernel="rbf", probability=True)
+        case "logistic":
+            return LogisticRegression(C=1.0, solver="liblinear", penalty="l1")
+        case _:
+            logging.error("Unknown model name")
+            return
 
-    return xgb.XGBClassifier(
-        n_estimators=1000,
-        max_depth=10,
-        learning_rate=0.1,
-        eval_metric="logloss",
-        n_jobs=-1,
-        # device="cuda",
-        callbacks=[early_stop]
-    )
-
-models = {
-    "logistic": LogisticRegression(C=1.0, solver="liblinear", penalty="l1"),
-    "gaussian": GaussianProcessClassifier(
-        kernel=RBF(length_scale=1.0),
-        n_restarts_optimizer=10
-    ),
-    "svm": SVC(C=1.0, kernel="rbf", probability=True),
-    "xgboost": define_xgb()
-}
+models = [
+    "logistic",
+    "gaussian",
+    "svm",
+    "xgboost"
+]
 
 logging.info(f"-----{antibiotic_name}-----\n")
 logging.info(f"Source susceptibility results:\n{label_stats.to_string(index=False)}\n\n")
 
-for name, model in models.items():
+for name in models:
     logging.info(f"Training {name}...")
 
     # if name != "xgboost":
@@ -97,6 +107,7 @@ for name, model in models.items():
         all_pr = pd.DataFrame()
         all_roc = pd.DataFrame()
         for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
+            model = define_model(name)
             logging.info(f"{name} - Fold {fold}...\n")
 
             X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
