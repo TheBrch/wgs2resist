@@ -81,12 +81,12 @@ logging.info(f"Source susceptibility results:\n{label_stats.to_string(index=Fals
 for name, model in models.items():
     logging.info(f"Training {name}...")
 
-    if name != "xgboost":
-        model.fit(X_bin, y)
-        joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
-        logging.info(f"{name} model exported.")
+    # if name != "xgboost":
+    #     model.fit(X_bin, y)
+    #     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
+    #     logging.info(f"{name} model exported.")
 
-    best_xgb_score = -1
+    # best_xgb_score = -1
 
     splitcount = min(min(counts), 5)
 
@@ -192,9 +192,9 @@ for name, model in models.items():
                     best_xgb_model = model
                 model = define_xgb()
 
-        if name == "xgboost":
-            joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
-            logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
+        # if name == "xgboost":
+        #     joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
+        #     logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
 
         data_collection.to_csv(f"models/{antibiotic_name}/stats/{name}_crossval_results.tsv", sep='\t', index=False)
         all_roc.to_csv(f"models/{antibiotic_name}/stats/{name}_roc.tsv", sep='\t', index=False)
