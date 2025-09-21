@@ -1,0 +1,6 @@
+.snakemake
+logs
+input
+output
+misc
+*.sh
