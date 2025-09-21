@@ -1,6 +1,6 @@
 .snakemake
 logs
 input
-output
+results
 misc
 *.sh
