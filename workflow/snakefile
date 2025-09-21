@@ -8,7 +8,18 @@ gpam=config['gpam_table']
 
 script_dir = os.path.join("workflow","scripts")
 
-def get_antibiotics (x):
+rule all:
+    input:
+        lambda x: expand(os.path.join("models", "{ab}", "{model}.pkl"), ab=get_antibiotics(), model=["gaussian", "svm", "logistic"]),
+        lambda x: expand(os.path.join("results","models", "{ab}", "stats", "figs", "{ab}_pr.png"), ab=get_antibiotics())#,
+        # lambda x: expand(os.path.join("condensed_data", "{ab}.pkl"), ab=get_antibiotics(x))
+
+include: "rules/condense.smk"
+include: "rules/encode.smk"
+include: "rules/evaluate.smk"
+include: "rules/train.smk"
+
+def get_antibiotics ():
     reformat_dir = checkpoints.reformat.get().output[0]
     r_tsvs = glob.glob(os.path.join(reformat_dir,"*.tsv"))
     antibiotics = []
@@ -19,81 +30,3 @@ def get_antibiotics (x):
             name_part = match.groups()[0]
             antibiotics.append(name_part)
     return antibiotics
-
-rule all:
-    input:
-        # lambda x: expand(os.path.join("models", "{ab}", "{model}.pkl"), ab=get_antibiotics(x), model=["gaussian", "svm", "logistic"])#,
-        lambda x: expand(os.path.join("models", "{ab}", "stats", "figs", "{ab}_pr.png"), ab=get_antibiotics(x))#,
-        # lambda x: expand(os.path.join("condensed_data", "{ab}.pkl"), ab=get_antibiotics(x))
-
-checkpoint reformat:
-    input:
-        script="reformat.R",
-        sus=suscept
-    output:
-        directory("training_data")
-    conda:
-        "R"
-    shell:
-        "Rscript {input.script}"
-
-rule binarize:
-    input:
-        script="binarize.py",
-        table=os.path.join("training_data", "{ab}.tsv")
-    output:
-        os.path.join("binarized_data", "{ab}.feather"),
-        os.path.join("binarized_data", "{ab}_lab.pkl")
-    conda:
-        "predictor"
-    shell:
-        "python3 {input.script} {input.table}"
-
-rule join:
-    input:
-        script="snp_gpa_join.R",
-        table=os.path.join("binarized_data", "{ab}.feather"),
-        gpa=gpam
-    output:
-        os.path.join("joint_data", "{ab}.feather")
-    conda:
-        "R"
-    shell:
-        "Rscript {input.script} {input.table}"
-
-rule condense:
-    input:
-        script="condense.py",
-        table=os.path.join("joint_data", "{ab}.feather")
-    output:
-        os.path.join("condensed_data", "{ab}.pkl")
-    conda:
-        "predictor"
-    threads: 8
-    shell:
-        "python3 {input.script} {input.table}"
-
-rule train:
-    input:
-        script="train.py",
-        src=os.path.join("condensed_data", "{ab}.pkl"),
-        lab=os.path.join("binarized_data", "{ab}_lab.pkl"),
-        sus=suscept
-    output:
-        expand(os.path.join("models", "{{ab}}", "{model}.pkl"), model=["gaussian", "svm", "logistic"])
-    conda:
-        "predictor"
-    threads: 4
-    shell:
-        "python3 {input.script} {input.src} {input.lab}"
-
-rule figs:
-    input:
-        script="figs.R",
-        src=expand(os.path.join("models", "{{ab}}", "{model}.pkl"), model=["gaussian", "svm", "logistic"]),
-    output:
-        os.path.join("models", "{ab}", "stats", "figs", "{ab}_pr.png")
-    conda:
-        "R"
-    shell:
-        "Rscript {input.script} {wildcards.ab}"
