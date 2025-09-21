@@ -1,18 +1,19 @@
 import glob, os
 
-if os.path.exists('config.yaml'):
-    configfile: 'config.yaml'
+configfile: os.path.join("config", "config.yaml")
 
 source=config['source_table']
 suscept=config['suscept_table']
 gpam=config['gpam_table']
 
+script_dir = os.path.join("workflow","scripts")
+
 def get_antibiotics (x):
     reformat_dir = checkpoints.reformat.get().output[0]
-    r_tsvs = glob.glob(reformat_dir+"/*.tsv")
+    r_tsvs = glob.glob(os.path.join(reformat_dir,"*.tsv"))
     antibiotics = []
     for table in r_tsvs:
-        filename = table.split('/')[-1]
+        filename = table.split(os.sep)[-1]
         match = re.match(r"(.+)\.tsv", filename)
         if match:
             name_part = match.groups()[0]
@@ -21,9 +22,9 @@ def get_antibiotics (x):
 
 rule all:
     input:
-        # lambda x: expand("models/{ab}/{model}.pkl", ab=get_antibiotics(x), model=["gaussian", "svm", "logistic"])#,
-        lambda x: expand("models/{ab}/stats/figs/{ab}_pr.png", ab=get_antibiotics(x))#,
-        # lambda x: expand("condensed_data/{ab}.pkl", ab=get_antibiotics(x))
+        # lambda x: expand(os.path.join("models", "{ab}", "{model}.pkl"), ab=get_antibiotics(x), model=["gaussian", "svm", "logistic"])#,
+        lambda x: expand(os.path.join("models", "{ab}", "stats", "figs", "{ab}_pr.png"), ab=get_antibiotics(x))#,
+        # lambda x: expand(os.path.join("condensed_data", "{ab}.pkl"), ab=get_antibiotics(x))
 
 checkpoint reformat:
     input:
@@ -39,10 +40,10 @@ checkpoint reformat:
 rule binarize:
     input:
         script="binarize.py",
-        table="training_data/{ab}.tsv"
+        table=os.path.join("training_data", "{ab}.tsv")
     output:
-        "binarized_data/{ab}.feather",
-        "binarized_data/{ab}_lab.pkl"
+        os.path.join("binarized_data", "{ab}.feather"),
+        os.path.join("binarized_data", "{ab}_lab.pkl")
     conda:
         "predictor"
     shell:
@@ -51,10 +52,10 @@ rule binarize:
 rule join:
     input:
         script="snp_gpa_join.R",
-        table="binarized_data/{ab}.feather",
+        table=os.path.join("binarized_data", "{ab}.feather"),
         gpa=gpam
     output:
-        "joint_data/{ab}.feather"
+        os.path.join("joint_data", "{ab}.feather")
     conda:
         "R"
     shell:
@@ -63,9 +64,9 @@ rule join:
 rule condense:
     input:
         script="condense.py",
-        table="joint_data/{ab}.feather"
+        table=os.path.join("joint_data", "{ab}.feather")
     output:
-        "condensed_data/{ab}.pkl"
+        os.path.join("condensed_data", "{ab}.pkl")
     conda:
         "predictor"
     threads: 8
@@ -75,11 +76,11 @@ rule condense:
 rule train:
     input:
         script="train.py",
-        src="condensed_data/{ab}.pkl",
-        lab="binarized_data/{ab}_lab.pkl",
+        src=os.path.join("condensed_data", "{ab}.pkl"),
+        lab=os.path.join("binarized_data", "{ab}_lab.pkl"),
         sus=suscept
     output:
-        expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic"])
+        expand(os.path.join("models", "{{ab}}", "{model}.pkl"), model=["gaussian", "svm", "logistic"])
     conda:
         "predictor"
     threads: 4
@@ -89,9 +90,9 @@ rule train:
 rule figs:
     input:
         script="figs.R",
-        src=expand("models/{{ab}}/{model}.pkl", model=["gaussian", "svm", "logistic"]),
+        src=expand(os.path.join("models", "{{ab}}", "{model}.pkl"), model=["gaussian", "svm", "logistic"]),
     output:
-        "models/{ab}/stats/figs/{ab}_pr.png"
+        os.path.join("models", "{ab}", "stats", "figs", "{ab}_pr.png")
     conda:
         "R"
     shell:
