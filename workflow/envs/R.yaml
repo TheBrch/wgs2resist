@@ -1,0 +1,6 @@
+name: R
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base=4.4.2=hc737e89_2
