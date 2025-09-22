@@ -2,26 +2,36 @@ import glob, os
 
 configfile: os.path.join("config", "config.yaml")
 
-source=config['source_table']
-suscept=config['suscept_table']
-gpam=config['gpam_table']
+source = config["source_table"]
+suscept = config["suscept_table"]
+gpam = config["gpam_table"]
 
-script_dir = os.path.join("workflow","scripts")
+script_dir = os.path.join("workflow", "scripts")
+
 
 rule all:
     input:
-        lambda x: expand(os.path.join("models", "{ab}", "{model}.pkl"), ab=get_antibiotics(), model=["gaussian", "svm", "logistic"]),
-        lambda x: expand(os.path.join("results","models", "{ab}", "stats", "figs", "{ab}_pr.png"), ab=get_antibiotics())#,
+        lambda x: expand(
+            os.path.join("models", "{ab}", "{model}.pkl"),
+            ab = get_antibiotics(),
+            model = ["gaussian", "svm", "logistic"],
+        ),
+        lambda x: expand(
+            os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
+            ab = get_antibiotics(),
+        ) #,
         # lambda x: expand(os.path.join("condensed_data", "{ab}.pkl"), ab=get_antibiotics(x))
+
 
 include: "rules/condense.smk"
 include: "rules/encode.smk"
 include: "rules/evaluate.smk"
 include: "rules/train.smk"
 
-def get_antibiotics ():
+
+def get_antibiotics():
     reformat_dir = checkpoints.reformat.get().output[0]
-    r_tsvs = glob.glob(os.path.join(reformat_dir,"*.tsv"))
+    r_tsvs = glob.glob(os.path.join(reformat_dir, "*.tsv"))
     antibiotics = []
     for table in r_tsvs:
         filename = table.split(os.sep)[-1]
