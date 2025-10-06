@@ -11,7 +11,7 @@ p_load(
   yaml
 )
 
-config <- read_yaml("config.yaml")
+config <- read_yaml(file.path("config", "config.yaml"))
 
 file <- config$source_table
 sus <- config$suscept_table
@@ -24,7 +24,7 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
       everything(),
       ~ ifelse(
         grepl("^(R|I|S|R\\(Inh\\))$", .),
-        as.numeric(gsub('^(R|I|R\\(Inh\\))$', '0', gsub('^S$', '1', .))),
+        as.numeric(gsub("^(R|I|R\\(Inh\\))$", "0", gsub("^S$", "1", .))),
         .
       )
     )
@@ -75,6 +75,3 @@ for (i in colnames(sus_data)) {
     quote = FALSE
   )
 }
-
-
-
