@@ -18,7 +18,6 @@ sus <- config$suscept_table
 
 sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
   column_to_rownames("Antibiotic") %>%
-  # select(contains("_PCD_")) %>%
   mutate(
     across(
       everything(),
@@ -29,9 +28,17 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
       )
     )
   ) %>%
-  filter(!apply(., 1, function(x) all(x == x[1]) | all(is.na(x)))) %>%
   t() %>%
   as.data.frame()
+
+variances <- apply(sus_data, 2, function(x) var(x, na.rm = TRUE))
+valid <- variances > 0.05
+
+print("The following sample sets are not diverse enough to be significant:")
+print(variances[variances <= 0.05])
+sus_data <- sus_data[, valid]
+
+print(colSums(!is.na(sus_data)))
 
 tsv_data <- read_tsv(file, col_names = TRUE, show_col_types = FALSE) %>%
   mutate(combined = paste(CHR, POS, sep = "-")) %>%
@@ -45,15 +52,6 @@ tsv_data <- read_tsv(file, col_names = TRUE, show_col_types = FALSE) %>%
 if (!dir.exists("./training_data")) {
   dir.create("./training_data", recursive = TRUE)
 }
-
-variances <- apply(sus_data, 2, function(x) var(x, na.rm = TRUE))
-valid <- variances > 0.05
-
-print("The following sample sets are not diverse enough to be significant:")
-print(variances[variances <= 0.05])
-sus_data <- sus_data[, valid]
-
-print(colSums(!is.na(sus_data)))
 
 for (i in colnames(sus_data)) {
   n <- gsub("\\/", "_", i)
