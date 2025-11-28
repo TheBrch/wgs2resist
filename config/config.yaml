@@ -1,3 +1,3 @@
-source_table: "../other_snakes/Thousand/snake_out/snippy-core/core.tab"
+source_table: "../../home/Achromo/other_snakes/Thousand/snake_out/snippy-core/core.tab"
 suscept_table: "input/susceptibility.tsv"
-gpam_table: "../other_snakes/Thousand/snake_out/panaroo/gene_presence_absence.Rtab"
+gpam_table: "../../home/Achromo/other_snakes/Thousand/snake_out/panaroo/gene_presence_absence.Rtab"
