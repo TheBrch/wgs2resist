@@ -49,13 +49,13 @@ tsv_data <- read_tsv(file, col_names = TRUE, show_col_types = FALSE) %>%
   as.data.frame() %>%
   rownames_to_column("rownames")
 
-if (!dir.exists("./training_data")) {
-  dir.create("./training_data", recursive = TRUE)
+if (!dir.exists("./results/training_data")) {
+  dir.create("./results/training_data", recursive = TRUE)
 }
 
 for (i in colnames(sus_data)) {
   n <- gsub("\\/", "_", i)
-  fn <- paste0("./training_data/", n, ".tsv")
+  fn <- paste0("./results/training_data/", n, ".tsv")
   data <- sus_data %>%
     select(all_of(i)) %>%
     na.omit() %>%

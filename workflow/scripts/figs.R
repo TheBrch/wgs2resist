@@ -35,7 +35,7 @@ roc <- list(
 
 args <- commandArgs(trailingOnly = TRUE)
 name = args[1]
-pathe <- paste0("models/", name, "/stats/")
+pathe <- paste0("results/models/", name, "/stats/")
 
 for (graphtype in list(pr, roc)){
   l <- data.frame()
@@ -192,7 +192,7 @@ ggsave(
 )
 
 correlation <- read_feather(
-  paste0("condensed_data/", name, "_hicorr.feather")
+  paste0("results/condensed_data/", name, "_hicorr.feather")
 ) %>%
   column_to_rownames('index') %>%
   mutate(across(everything(), ~ round(as.numeric(.), 3)))
