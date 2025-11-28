@@ -1,36 +1,36 @@
 checkpoint reformat:
     input:
-        script = os.path.join("scripts", "reformat.R"),
+        script = os.path.join(script_dir, "reformat.R"),
         sus = suscept
     output:
         directory(os.path.join("results", "training_data"))
     conda:
-        "R"
+        os.path.join(env_dir, "R.yaml")
     shell:
         "Rscript {input.script}"
 
 
 rule binarize:
     input:
-        script = os.path.join("scripts", "binarize.py"),
+        script = os.path.join(script_dir, "binarize.py"),
         table = os.path.join("results", "training_data", "{ab}.tsv")
     output:
         os.path.join("results", "binarized_data", "{ab}.feather"),
         os.path.join("results", "binarized_data", "{ab}_lab.pkl"),
     conda:
-        "predictor"
+        os.path.join(env_dir, "predictor.yaml")
     shell:
         "python3 {input.script} {input.table}"
 
 
 rule join:
     input:
-        script = os.path.join("scripts", "snp_gpa_join.R"),
+        script = os.path.join(script_dir, "snp_gpa_join.R"),
         table = os.path.join("results", "binarized_data", "{ab}.feather"),
         gpa = gpam
     output:
         os.path.join("results", "joint_data", "{ab}.feather")
     conda:
-        "R"
+        os.path.join(env_dir, "R.yaml")
     shell:
         "Rscript {input.script} {input.table}"
