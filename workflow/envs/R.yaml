@@ -3,4 +3,19 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - r-base=4.4.2=hc737e89_2
+  - r-base
+  - r-pacman
+  - r-colorspace
+  - r-dplyr
+  - r-ggplot2
+  - r-pheatmap
+  - r-proxy
+  - r-RColorBrewer
+  - r-readr
+  - r-tibble
+  - r-tidyr
+  - r-yaml
+  - r-reshape2
+  - r-ggtext
+  - r-arrow
+  - r-forcats
