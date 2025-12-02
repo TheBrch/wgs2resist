@@ -29,10 +29,10 @@ import xgboost as xgb
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 
-os.makedirs(f"results/models/{antibiotic_name}/stats", exist_ok=True)
+os.makedirs(os.path.join("results", "models", antibiotic_name, "stats"), exist_ok=True)
 
 logging.basicConfig(
-    filename=f"results/models/{antibiotic_name}/training.log",
+    filename=os.path.join("results", "models", antibiotic_name, "training.log"),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -163,12 +163,15 @@ logging.info(
 for name in models:
     logging.info(f"Training {name}...")
 
-    # if name != "xgboost":
-    #     model.fit(X_bin, y)
-    #     joblib.dump(model, f"models/{antibiotic_name}/{name}.pkl")
-    #     logging.info(f"{name} model exported.")
+    if name != "xgboost":
+        model = define_model(name)
+        model.fit(X_bin, y)
+        joblib.dump(
+            model, os.path.join("results", "models", antibiotic_name, f"{name}.pkl")
+        )
+        logging.info(f"{name} model exported.")
 
-    # best_xgb_score = -1
+    best_xgb_score = -1
 
     splitcount = min(min(counts), 5)
 
@@ -231,7 +234,13 @@ for name in models:
                     {"feature": featurenames, "value": coef.ravel()}
                 )
                 features.to_csv(
-                    f"results/models/{antibiotic_name}/stats/{name}_f{fold}_features.tsv",
+                    os.path.join(
+                        "results",
+                        "models",
+                        antibiotic_name,
+                        "stats",
+                        f"{name}_f{fold}_features.tsv",
+                    ),
                     sep="\t",
                     index=False,
                 )
@@ -278,24 +287,37 @@ for name in models:
                     best_xgb_fold = fold
                     best_xgb_score = score
                     best_xgb_model = model
-                model = define_xgb()
+                # model = define_xgb()
 
-        # if name == "xgboost":
-        #     joblib.dump(best_xgb_model, f"models/{antibiotic_name}/{name}.pkl")
-        #     logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
+        if name == "xgboost":
+            joblib.dump(
+                best_xgb_model,
+                os.path.join("results", "models", antibiotic_name, f"{name}.pkl"),
+            )
+            logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
 
         data_collection.to_csv(
-            f"results/models/{antibiotic_name}/stats/{name}_crossval_results.tsv",
+            os.path.join(
+                "results",
+                "models",
+                antibiotic_name,
+                "stats",
+                f"{name}_crossval_results.tsv",
+            ),
             sep="\t",
             index=False,
         )
         all_roc.to_csv(
-            f"results/models/{antibiotic_name}/stats/{name}_roc.tsv",
+            os.path.join(
+                "results", "models", antibiotic_name, "stats", f"{name}_roc.tsv"
+            ),
             sep="\t",
             index=False,
         )
         all_pr.to_csv(
-            f"results/models/{antibiotic_name}/stats/{name}_pr.tsv",
+            os.path.join(
+                "results", "models", antibiotic_name, "stats", f"{name}_pr.tsv"
+            ),
             sep="\t",
             index=False,
         )
