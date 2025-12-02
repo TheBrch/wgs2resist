@@ -1,0 +1,6 @@
+name: unitig-caller
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - unitig-caller
