@@ -23,14 +23,14 @@ p_load(
   gridExtra
 )
 
-folders <- basename(list.dirs("results/models/", full.names = TRUE, recursive = FALSE))
+folders <- basename(list.dirs(file.path("results", "models"), full.names = TRUE, recursive = FALSE))
 
 l <- data.frame()
 for (name in folders) {
-  pathe <- paste0("results/models/", name, "/stats/")
+  pathe <- file.path("results", "models", name, "stats")
   for (model in c("logistic", "gaussian", "svm", "xgboost")){
     metrics <- read_tsv(
-      paste0(pathe, model, "_", "crossval_results.tsv"),
+      file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
@@ -106,7 +106,7 @@ for (prop in props) {
     main = paste0(toupper(prop), " Score"),
     color = colorRampPalette(c("red", "white", "blue"))(100),
     breaks = seq(min(matrix, na.rm = TRUE), 1, length.out = 101),
-    filename = paste0("results/models/", prop, "_summary.png")
+    filename = file.path("results", "models", paste0(prop, "_summary.png"))
   )
   
   if (prop == "roc_auc") {
@@ -121,7 +121,7 @@ for (prop in props) {
   
 }
 
-png("results/models/combined_metrics_summary.png", width = 2 * matrix_width, height = 2 * matrix_height, units = "in", res = 300)
+png(file.path("results", "models", "combined_metrics_summary.png"), width = 2 * matrix_width, height = 2 * matrix_height, units = "in", res = 300)
 
 combined_plot <- grid.arrange(
   heatmap_plots[[1]], heatmap_plots[[2]],

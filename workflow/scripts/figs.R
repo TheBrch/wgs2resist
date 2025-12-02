@@ -35,14 +35,14 @@ roc <- list(
 
 args <- commandArgs(trailingOnly = TRUE)
 name = args[1]
-pathe <- paste0("results/models/", name, "/stats/")
+pathe <- file.path("results", "models", name, "stats")
 
 for (graphtype in list(pr, roc)){
   l <- data.frame()
   met <- data.frame()
   for (model in c("logistic", "gaussian", "svm", "xgboost")){
     model_data <- read_tsv(
-      paste0(pathe, model, "_", graphtype[["name"]],".tsv"),
+      file.path(pathe, paste0(model, "_", graphtype[["name"]],".tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
@@ -51,7 +51,7 @@ for (graphtype in list(pr, roc)){
     l <- rbind(l, model_data)
     
     metrics <- read_tsv(
-      paste0(pathe, model, "_", "crossval_results.tsv"),
+      file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
@@ -102,7 +102,7 @@ for (graphtype in list(pr, roc)){
   
   ggsave(
     plot = plotvar,
-    filename = paste0(pathe, "/figs/", name, "_", graphtype[["name"]], ".png"),
+    filename = file.path(pathe, "figs", paste0(name, "_", graphtype[["name"]], ".png")),
     width = 8,
     height = 6,
     dpi = 300,
@@ -116,7 +116,7 @@ for (model in c("logistic", "xgboost")){
   for (fold in 0:4) {
     
     fold_data <- read_tsv(
-      paste0(pathe, model, "_f", fold, "_features.tsv"),
+      file.path(pathe, paste0(model, "_f", fold, "_features.tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
@@ -183,7 +183,7 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
 #export to file
 ggsave(
   plot = plotvar,
-  filename = paste0(pathe, "/figs/", name, "_feature_importance.png"),
+  filename = file.path(pathe, "figs", paste0(name, "_feature_importance.png")),
   width = 11,
   height = 6,
   dpi = 300,
@@ -192,7 +192,7 @@ ggsave(
 )
 
 correlation <- read_feather(
-  paste0("results/condensed_data/", name, "_hicorr.feather")
+  file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
 ) %>%
   column_to_rownames('index') %>%
   mutate(across(everything(), ~ round(as.numeric(.), 3)))
@@ -260,7 +260,7 @@ if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
     height = 2.5 + (nrow(filtered) * 0.5),
     cellwidth = 20,
     cellheight = 20,
-    filename = paste0(pathe, "/figs/", name, "_corr.png")
+    filename = file.path(pathe, "figs", paste0(name, "_corr.png"))
   )
 }
 

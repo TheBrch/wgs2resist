@@ -12,7 +12,7 @@ p_load(
   yaml
 )
 
-config <- read_yaml("config.yaml")
+config <- read_yaml(file.path("config", "config.yaml"))
 gpam <- config$gpam_table
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -29,9 +29,9 @@ joint <- gpam_data %>%
   right_join(bin_data, by = "rownames") %>%
   column_to_rownames("rownames")
 
-if (!dir.exists("./results/joint_data")) {
-  dir.create("./results/joint_data", recursive = TRUE)
+if (!dir.exists(file.path("results", "joint_data"))) {
+  dir.create(file.path("results", "joint_data"), recursive = TRUE)
 }
 
 filename <- gsub(".*/(.*)", "\\1", file)
-write_feather(joint, paste0("./results/joint_data/", filename))
+write_feather(joint, file.path("results", "joint_data", filename))
