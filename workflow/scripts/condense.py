@@ -26,6 +26,7 @@ def log_exc(exc_type, exc_value, exc_tb):
 sys.excepthook = log_exc
 
 X_bin = pd.read_feather(X_bin_file)
+rownames_col = X_bin.pop("rownames")
 
 logging.info(f"Original number of features: {X_bin.shape[1]}")
 
@@ -65,6 +66,8 @@ logging.info(f"Exported highly correlated SNP bit info.")
 
 X_reduced = X_thresh.drop(columns=to_drop)
 logging.info(f"After correlation filtering: {X_reduced.shape[1]}")
+
+X_reduced["rownames"] = rownames_col
 
 X_reduced.to_pickle(os.path.join("results", "condensed_data", f"{antibiotic_name}.pkl"))
 logging.info(f"Exported condensed data. Done.")
