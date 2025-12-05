@@ -26,8 +26,9 @@ gpam_data <- read_tsv(gpam, col_names = TRUE, show_col_types = FALSE) %>%
   rownames_to_column("rownames")
 
 joint <- gpam_data %>%
-  right_join(bin_data, by = "rownames") %>%
-  column_to_rownames("rownames")
+  right_join(bin_data, by = "rownames") 
+  # %>%
+  # column_to_rownames("rownames")
 
 if (!dir.exists(file.path("results", "joint_data"))) {
   dir.create(file.path("results", "joint_data"), recursive = TRUE)
