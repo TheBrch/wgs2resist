@@ -6,6 +6,7 @@ env_dir = os.path.join("..", "envs")
 source = config["source_table"]
 suscept = config["suscept_table"]
 gpam = config["gpam_table"]
+models = config["models"].split()
 
 script_dir = os.path.join("workflow", "scripts")
 
@@ -15,13 +16,13 @@ rule all:
         lambda x: expand(
             os.path.join("results", "models", "{ab}", "{model}.pkl"),
             ab = get_antibiotics(),
-            model = ["gaussian", "svm", "logistic"],
+            model = models,
         ),
         lambda x: expand(
             os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
             ab = get_antibiotics(),
-        ) #,
-        # lambda x: expand(os.path.join("condensed_data", "{ab}.pkl"), ab=get_antibiotics(x))
+        ),
+        os.path.join("results", "models", "combined_metrics_summary.png")
 
 
 include: "rules/condense.smk"
