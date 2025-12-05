@@ -21,6 +21,9 @@ p_load(
   reshape2
 )
 
+config <- read_yaml(file.path("config", "config.yaml"))
+models <- unlist(strsplit(config$models, " "))
+
 pr <- list(
   name = 'pr',
   x = 'Recall',
@@ -40,7 +43,7 @@ pathe <- file.path("results", "models", name, "stats")
 for (graphtype in list(pr, roc)){
   l <- data.frame()
   met <- data.frame()
-  for (model in c("logistic", "gaussian", "svm", "xgboost")){
+  for (model in models){
     model_data <- read_tsv(
       file.path(pathe, paste0(model, "_", graphtype[["name"]],".tsv")),
       col_names = TRUE,
@@ -112,7 +115,10 @@ for (graphtype in list(pr, roc)){
 }
 
 l <- data.frame()
-for (model in c("logistic", "xgboost")){
+
+featuremodels <- intersect(models, c("logistic", "xgboost"))
+
+for (model in featuremodels){
   for (fold in 0:4) {
     
     fold_data <- read_tsv(

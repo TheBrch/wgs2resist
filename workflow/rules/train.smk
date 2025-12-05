@@ -7,7 +7,7 @@ rule train:
     output:
         expand(
             os.path.join("results", "models", "{{ab}}", "{model}.pkl"),
-            model=["gaussian", "svm", "logistic"],
+            model=models,
         )
     conda:
         os.path.join(env_dir, "predictor.yaml")

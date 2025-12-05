@@ -25,10 +25,13 @@ p_load(
 
 folders <- basename(list.dirs(file.path("results", "models"), full.names = TRUE, recursive = FALSE))
 
+config <- read_yaml(file.path("config", "config.yaml"))
+models <- unlist(strsplit(config$models, " "))
+
 l <- data.frame()
 for (name in folders) {
   pathe <- file.path("results", "models", name, "stats")
-  for (model in c("logistic", "gaussian", "svm", "xgboost")){
+  for (model in models){
     metrics <- read_tsv(
       file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
       col_names = TRUE,
