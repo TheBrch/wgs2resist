@@ -8,4 +8,5 @@ dependencies:
   - pyarrow
   - pyyaml
   - scikit-learn
+  - imbalanced-learn
   - xgboost
