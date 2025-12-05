@@ -18,13 +18,14 @@ from sklearn.metrics import (
     recall_score,
     roc_curve,
 )
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.svm import SVC
 import joblib
 import logging
 import os
 import sys
 import xgboost as xgb
+from imblearn.over_sampling import SMOTE
 
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
@@ -46,7 +47,10 @@ def log_exc(exc_type, exc_value, exc_tb):
 sys.excepthook = log_exc
 
 X_bin = pd.read_pickle(X_bin_file)
+sample_ids = X_bin.pop("rownames")
 featurenames = X_bin.columns
+
+patients = sample_ids.str.split("_").str[0]
 y = pd.read_pickle(sys.argv[2]).values.ravel()
 
 zero_n_one, counts = np.unique(y, return_counts=True)
@@ -177,20 +181,27 @@ for name in models:
 
     logging.info(f"\nCross-validation of {name}...\n")
     if splitcount > 1:
-        skf = StratifiedKFold(n_splits=splitcount, shuffle=True, random_state=42)
+        skf = StratifiedGroupKFold(n_splits=splitcount, shuffle=True, random_state=42)
         data_collection = pd.DataFrame()
         all_pr = pd.DataFrame()
         all_roc = pd.DataFrame()
-        for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y)):
+        for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y, patients)):
             model = define_model(name)
             logging.info(f"{name} - Fold {fold}...\n")
+            logging.info(f"  Train: index={train_index}")
+            logging.info(f"         group={patients[train_index]}")
+            logging.info(f"  Test:  index={test_index}")
+            logging.info(f"         group={patients[test_index]}")
 
-            X_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
-            y_train, y_test = y[train_index], y[test_index]
+            X_pre_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
+            y_pre_train, y_test = y[train_index], y[test_index]
 
-            if not np.all(np.isin(zero_n_one, y_train)):
+            if not np.all(np.isin(zero_n_one, y_pre_train)):
                 logging.info(f"Fold {fold} training data not diverse, skipping...")
                 continue
+
+            sm = SMOTE(random_state=42)
+            X_train, y_train = sm.fit_resample(X_pre_train, y_pre_train)
 
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
