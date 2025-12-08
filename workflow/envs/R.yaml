@@ -19,3 +19,4 @@ dependencies:
   - r-ggtext
   - r-arrow
   - r-forcats
+  - r-gridextra
