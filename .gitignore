@@ -2,5 +2,6 @@
 logs
 input
 results
+resources
 misc
 *.sh
