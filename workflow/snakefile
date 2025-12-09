@@ -1,4 +1,4 @@
-import glob, os
+import glob, os, shutil
 
 configfile: os.path.join("config", "config.yaml")
 
@@ -6,29 +6,51 @@ env_dir = os.path.join("..", "envs")
 source = config["source_table"]
 suscept = config["suscept_table"]
 gpam = config["gpam_table"]
+metadata = config["metadata"]
+assembly_dir = config["assembly_dir"]
 models = config["models"].split()
+gene_aln_dir = config["core_gene_aln_dir"]
 
 script_dir = os.path.join("workflow", "scripts")
 
+def get_file(wildcards):
+    with open(metadata, "r") as f:
+        for line in f:
+            fields = line.strip().split("\t")
+            if i in fields[1]:
+                return fields[2]
+        return i 
+
+with open(suscept, "r") as f:
+	first_line = f.readline().strip().split()
+	ids = first_line[1:]
+
+shutil.rmtree(os.path.join("resources", "fasta_symlinks"), ignore_errors=True)
+os.makedirs(os.path.join("resources", "fasta_symlinks"), exist_ok=True)
+
+gene_files = glob.glob(os.path.join(gene_aln_dir, "*.aln.fas"))
 
 rule all:
     input:
-        lambda x: expand(
-            os.path.join("results", "models", "{ab}", "{model}.pkl"),
-            ab = get_antibiotics(),
-            model = models,
-        ),
-        lambda x: expand(
-            os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
-            ab = get_antibiotics(),
-        ),
-        os.path.join("results", "models", "combined_metrics_summary.png")
+        # lambda x: expand(
+        #     os.path.join("results", "models", "{ab}", "{model}.pkl"),
+        #     ab = get_antibiotics(),
+        #     model = models,
+        # ),
+        # lambda x: expand(
+        #     os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
+        #     ab = get_antibiotics(),
+        # ),
+        # os.path.join("results", "models", "combined_metrics_summary.png"),
+        # os.path.join("results", "reference.fa")
+        os.path.join("results", "bakta", "reference", "reference.gff")
 
 
 include: "rules/condense.smk"
 include: "rules/encode.smk"
 include: "rules/evaluate.smk"
 include: "rules/train.smk"
+include: "rules/snp.smk"
 
 
 def get_antibiotics():
@@ -42,3 +64,15 @@ def get_antibiotics():
             name_part = match.groups()[0]
             antibiotics.append(name_part)
     return antibiotics
+
+
+rule fasta_symlink:
+    output:
+        os.path.join("resources", "fasta_symlinks", "{i}.fasta")
+    run:
+        true_id = get_file(wildcards.i)
+        os.symlink(
+            os.path.join("..", "..", assembly_dir, true_id, f"{true_id}_filtered.fasta"),
+            os.path.join("resources", "fasta_symlinks", f"{wildcards.i}.fasta"),
+            target_is_directory=False
+        )
