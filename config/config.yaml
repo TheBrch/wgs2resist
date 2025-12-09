@@ -2,3 +2,11 @@ source_table: "../../home/Achromo/other_snakes/Thousand/snake_out/snippy-core/co
 suscept_table: "input/susceptibility.tsv"
 gpam_table: "../../home/Achromo/other_snakes/Thousand/snake_out/panaroo/gene_presence_absence.Rtab"
 models: "gaussian svm logistic xgboost"
+
+metadata: "input/metadata.tsv"
+assembly_dir: "input/assemblies"
+core_gene_aln_dir: "/scratch/lustre/home/hpc_migab/gem-see-achro/04_core_genome/pan_panaroo/joined/aligned_gene_sequences"
+snippy:
+  maxsoft: 75
+  minfrac: 0.8
+  mincov: 5
