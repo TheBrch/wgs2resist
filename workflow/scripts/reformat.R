@@ -31,11 +31,13 @@ sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
   t() %>%
   as.data.frame()
 
+variance_thresh <- 0.16
+
 variances <- apply(sus_data, 2, function(x) var(x, na.rm = TRUE))
-valid <- variances > 0.05
+valid <- variances > variance_thresh
 
 print("The following sample sets are not diverse enough to be significant:")
-print(variances[variances <= 0.05])
+print(variances[variances <= variance_thresh])
 sus_data <- sus_data[, valid]
 
 print(colSums(!is.na(sus_data)))
