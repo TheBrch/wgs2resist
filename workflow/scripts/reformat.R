@@ -13,7 +13,7 @@ p_load(
 
 config <- read_yaml(file.path("config", "config.yaml"))
 
-file <- config$source_table
+file <- args[1]
 sus <- config$suscept_table
 
 sus_data <- read_tsv(sus, col_names = TRUE, show_col_types = FALSE) %>%
