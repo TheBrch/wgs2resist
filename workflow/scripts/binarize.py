@@ -15,18 +15,26 @@ rownames = data[["rownames"]]
 y = data[["Susceptible"]]
 X = data.drop(columns=["Susceptible", "rownames"])
 
-nuc_encoding = {"A": [0, 0], "G": [0, 1], "T": [1, 0], "C": [1, 1]}
+nuc_encoding = {
+    "A": [1, 0, 0, 0],
+    "G": [0, 1, 0, 0],
+    "T": [0, 0, 1, 0],
+    "C": [0, 0, 0, 1],
+    "-": [0, 0, 0, 0],
+}
 
 
 def encode_nuc(s):
-    return nuc_encoding.get(s, [None, None])
+    return nuc_encoding.get(s, [None, None, None, None])
 
 
 new_cols = [rownames]
 for col in X.columns:
     encoded = X[col].apply(encode_nuc)
-    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[0]).rename(f"{col}_bit1"))
-    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[1]).rename(f"{col}_bit2"))
+    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[0]).rename(f"{col}_A"))
+    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[1]).rename(f"{col}_G"))
+    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[2]).rename(f"{col}_T"))
+    new_cols.append(X[col].apply(lambda x: encode_nuc(x)[3]).rename(f"{col}_C"))
 
 X_bin = pd.concat(new_cols, axis=1)
 
