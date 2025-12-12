@@ -3,7 +3,6 @@ import glob, os, shutil
 configfile: os.path.join("config", "config.yaml")
 
 env_dir = os.path.join("..", "envs")
-source = config["source_table"]
 suscept = config["suscept_table"]
 gpam = config["gpam_table"]
 metadata = config["metadata"]
