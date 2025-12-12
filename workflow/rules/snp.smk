@@ -50,7 +50,7 @@ rule bakta:
 
 rule snippy:
     input:
-        a=lambda wildcards: (true_id := get_file(wildcards.id)) and os.path.join(assembly_dir, true_id, f"{true_id}_filtered.fasta"),
+        a=lambda wildcards: fastapaths[wildcards.id],
         ref=os.path.join("results", "bakta", "reference", "reference.gbff")
     output:
         tab=os.path.join("results", "snippy", "{id}", "snps.tab"),

@@ -24,8 +24,11 @@ with open(suscept, "r") as f:
 	first_line = f.readline().strip().split()
 	ids = first_line[1:]
 
-shutil.rmtree(os.path.join("resources", "fasta_symlinks"), ignore_errors=True)
-os.makedirs(os.path.join("resources", "fasta_symlinks"), exist_ok=True)
+fastapaths = {
+    i: os.path.abspath(os.path.join(assembly_dir, true_id, f"{true_id}_filtered.fasta"))
+    for i in ids
+    if (true_id := get_file(i))
+}
 
 gene_files = glob.glob(os.path.join(gene_aln_dir, "*.aln.fas"))
 
