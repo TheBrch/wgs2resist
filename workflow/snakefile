@@ -64,15 +64,3 @@ def get_antibiotics():
             name_part = match.groups()[0]
             antibiotics.append(name_part)
     return antibiotics
-
-
-rule fasta_symlink:
-    output:
-        os.path.join("resources", "fasta_symlinks", "{i}.fasta")
-    run:
-        true_id = get_file(wildcards.i)
-        os.symlink(
-            os.path.join("..", "..", assembly_dir, true_id, f"{true_id}_filtered.fasta"),
-            os.path.join("resources", "fasta_symlinks", f"{wildcards.i}.fasta"),
-            target_is_directory=False
-        )
