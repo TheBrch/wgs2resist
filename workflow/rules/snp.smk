@@ -38,14 +38,14 @@ rule bakta:
         database=os.path.join("resources", "db", "bakta.db")
     output:
         gbff=os.path.join("results", "bakta", "reference", "reference.gbff")
-    threads: 8
+    threads: workflow.cores
     conda:
         os.path.join(env_dir, "bakta.yaml")
     params:
         gbff_dir = subpath(output.gbff, parent=True),
         db_dir = subpath(input.database, parent=True)
     shell:
-        "bakta {input.fasta} --output {params.gbff_dir} --db {params.db_dir} --force"
+        "bakta {input.fasta} --output {params.gbff_dir} --db {params.db_dir} --threads {threads} --force"
     
 
 rule snippy:
