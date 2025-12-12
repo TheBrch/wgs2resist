@@ -6,9 +6,12 @@ rule consensus:
     conda:
         os.path.join(env_dir, "emboss.yaml")
     params:
-        custom_header=lambda wildcards, input: f">{os.path.basename(input.aln).split(".")[0]}"
+        custom_header=lambda wildcards, input: os.path.basename(input.aln).split('.')[0]
     shell:
-        "cons -sequence {input} -outseq /dev/stdout | sed '1c\\{params.custom_header}' > {output.consensus} "
+        '''
+        cons -plurality 0 -name {params.custom_header} -sequence {input} -outseq /dev/stdout | \
+        degapseq -sequence /dev/stdin -outseq {output.consensus}
+        '''
 
 rule gene_concat:
     input:
@@ -34,46 +37,47 @@ rule bakta:
         fasta=os.path.join("results", "reference.fa"),
         database=os.path.join("resources", "db", "bakta.db")
     output:
-        gff=os.path.join("results", "bakta", "reference", "reference.gff")
+        gbff=os.path.join("results", "bakta", "reference", "reference.gbff")
     threads: 8
     conda:
         os.path.join(env_dir, "bakta.yaml")
     params:
-        gff_dir = subpath(output.gff, parent=True),
+        gbff_dir = subpath(output.gbff, parent=True),
         db_dir = subpath(input.database, parent=True)
     shell:
-        "bakta {input.fasta} --output {params.gff_dir} --db {params.db_dir} --force"
+        "bakta {input.fasta} --output {params.gbff_dir} --db {params.db_dir} --force"
     
 
 rule snippy:
     input:
         a=os.path.join("resources", "fasta_symlinks", "{id}.fasta"),
-        ref=os.path.join("results", "bakta", "reference", "reference.gff")
+        ref=os.path.join("results", "bakta", "reference", "reference.gbff")
     output:
-        tab=os.path.join("results", "snippy", "{id}", "snps.tab")
+        tab=os.path.join("results", "snippy", "{id}", "snps.tab"),
+        csv=os.path.join("results", "snippy", "{id}", "snps.csv")
     conda:
         os.path.join(env_dir, "snippy.yaml")
     params:
         soft=config["snippy"]["maxsoft"],
         frac=config["snippy"]["minfrac"],
         cov=config["snippy"]["mincov"],
-        outdir=lambda wildcards, output: subpath(output.tab)
+        outdir=subpath(output.tab, parent=True)
     shell:
-        "snippy --outdir {output.aln} --maxsoft {params.soft} --minfrac {params.frac} --mincov {params.cov} --ref {input.ref} --ctgs {input.a} --force"
+        "snippy --outdir {params.outdir} --maxsoft {params.soft} --minfrac {params.frac} --mincov {params.cov} --ref {input.ref} --ctgs {input.a} --force"
 
-# rule core:
-#     input:
-#         expand(os.path.join("results", "snippy", "{sample}", "snps.tab"), sample=ids)
-#     output:
-#         core=os.path.join("results", "snippy-core", "core.tab")
-#     run:
-#         with open(output, "w") as o:
-#             for f in input:
-#                 for line in f:
-#                     fields = line.strip().split('\t')
-#                     chrom=fields[0]
-#                     pos=fields[1]
-#                     typ=fields[2]
-#                     ref=fields[3]
-#                     alt=fields[4]
-    # filtering out non-synonymous variants
+rule non_syn_core:
+    input:
+        samples=lambda wildcards: expand(os.path.join("results", "snippy", "{ids}", "snps.csv"), ids=ids),
+        script=os.path.join(script_dir, "filtered_snp_core.py")
+    output:
+        os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
+        os.path.join("results", "ns-snippy-core", "dn_ds.tsv")
+    conda:
+        os.path.join(env_dir, "custom_py.yaml")
+    params:
+        outdir=subpath(output[0], parent = True)
+    threads: 4
+    shell:
+        '''
+        python3 {input.script} -o {params.outdir} -s {input.samples}
+        '''
