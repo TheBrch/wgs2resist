@@ -45,7 +45,8 @@ rule all:
         # ),
         # os.path.join("results", "models", "combined_metrics_summary.png"),
         # os.path.join("results", "reference.fa")
-        os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv")
+        os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
+        os.path.join("results", "unitig-caller", "dummy.dummy")
 
 
 include: "rules/condense.smk"
@@ -53,6 +54,7 @@ include: "rules/encode.smk"
 include: "rules/evaluate.smk"
 include: "rules/train.smk"
 include: "rules/snp.smk"
+include: "rules/unitig.smk"
 
 
 def get_antibiotics():
