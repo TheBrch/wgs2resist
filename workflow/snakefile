@@ -46,7 +46,7 @@ rule all:
         # os.path.join("results", "models", "combined_metrics_summary.png"),
         # os.path.join("results", "reference.fa")
         os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
-        os.path.join("results", "unitig-caller", "dummy.dummy")
+        os.path.join("results", "unitig-caller", "unitigs.rtab")
 
 
 include: "rules/condense.smk"
