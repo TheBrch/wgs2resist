@@ -13,7 +13,7 @@ gene_aln_dir = config["core_gene_aln_dir"]
 
 script_dir = os.path.join("workflow", "scripts")
 
-def get_file(wildcards):
+def get_file(i):
     with open(metadata, "r") as f:
         for line in f:
             fields = line.strip().split("\t")
@@ -43,7 +43,7 @@ rule all:
         # ),
         # os.path.join("results", "models", "combined_metrics_summary.png"),
         # os.path.join("results", "reference.fa")
-        os.path.join("results", "bakta", "reference", "reference.gff")
+        os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv")
 
 
 include: "rules/condense.smk"
