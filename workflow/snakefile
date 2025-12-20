@@ -39,14 +39,14 @@ rule all:
         #     ab = get_antibiotics(),
         #     model = models,
         # ),
-        # lambda x: expand(
-        #     os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
-        #     ab = get_antibiotics(),
-        # ),
-        # os.path.join("results", "models", "combined_metrics_summary.png"),
+        lambda x: expand(
+            os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png"),
+            ab = get_antibiotics(),
+        ),
+        os.path.join("results", "models", "combined_metrics_summary.png")
         # os.path.join("results", "reference.fa")
-        os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
-        os.path.join("results", "unitig-caller", "unitigs.rtab")
+        # os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
+        # os.path.join("results", "unitig-caller", "unitigs.rtab")
 
 
 include: "rules/condense.smk"
