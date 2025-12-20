@@ -50,11 +50,13 @@ def get_correlated(corr_matrix):
     return np.nonzero(to_drop)[0]
 
 
-corr_matrix = X_thresh.corr().round(3).astype(np.float32)
+corr_matrix = X_thresh.corr().astype(np.float32)
 logging.info(f"Generated correlation matrix.")
 
 to_drop_ind = get_correlated(corr_matrix.values)
 logging.info(f"Found {len(to_drop_ind)} highly correlated SNP bits")
+
+corr_matrix = corr_matrix.round(3)
 
 to_drop = corr_matrix.columns[to_drop_ind]
 hicorr = corr_matrix[to_drop]
