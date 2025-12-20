@@ -9,6 +9,7 @@ rule figs:
         os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png")
     conda:
         os.path.join(env_dir, "R.yaml")
+    threads: workflow.cores
     shell:
         "Rscript {input.script} {wildcards.ab}"
 
