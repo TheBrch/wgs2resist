@@ -176,7 +176,6 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
     title = paste0(name, " feature importance")
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   scale_x_discrete(
     labels = function(x) {
       ifelse(x %in% appears_in_both, 
@@ -184,7 +183,7 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
              x)
     }
   ) +
-  theme(axis.text.x = element_markdown())
+  theme(legend.position = "bottom", element_markdown(angle = 90, vjust = 0.5, hjust = 1))
 
 #export to file
 ggsave(
