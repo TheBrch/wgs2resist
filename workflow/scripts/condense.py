@@ -50,7 +50,7 @@ def get_correlated(corr_matrix):
     return np.nonzero(to_drop)[0]
 
 
-corr_matrix = X_thresh.corr().astype(np.float32)
+corr_matrix = X_thresh.corr().round(3).astype(np.float32)
 logging.info(f"Generated correlation matrix.")
 
 to_drop_ind = get_correlated(corr_matrix.values)
