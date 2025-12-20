@@ -8,6 +8,10 @@ rule train:
         expand(
             os.path.join("results", "models", "{{ab}}", "{model}.pkl"),
             model=models,
+        ),
+        crossval = expand(
+            os.path.join("results", "models", "{{ab}}", "stats", "{model}_crossval_results.tsv"),
+            model=models
         )
     conda:
         os.path.join(env_dir, "predictor.yaml")
