@@ -183,7 +183,7 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
              x)
     }
   ) +
-  theme(legend.position = "bottom", element_markdown(angle = 90, vjust = 0.5, hjust = 1))
+  theme(legend.position = "bottom", axis.text.x = element_markdown(angle = 45, vjust = 0.5, hjust = 1))
 
 #export to file
 ggsave(
