@@ -13,6 +13,7 @@ p_load(
 
 config <- read_yaml(file.path("config", "config.yaml"))
 
+args <- commandArgs(trailingOnly = TRUE)
 file <- args[1]
 sus <- config$suscept_table
 
