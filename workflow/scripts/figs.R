@@ -176,15 +176,17 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
     title = paste0(name, " feature importance")
   ) +
   theme_minimal() +
-  scale_x_discrete(
-    labels = function(x) {
-      ifelse(x %in% appears_in_both, 
-             paste0("<span style='color:red'>", x, "</span>"), 
-             x)
-    }
-  ) +
-  theme(legend.position = "bottom", axis.text.x = element_markdown(angle = 45, vjust = 0.5, hjust = 1))
-
+  scale_x_discrete() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(
+    angle = 45,
+    vjust = 1,
+    hjust = 1,
+    colour =  ifelse(l$feature %in% appears_in_both, "red", "black"),
+    face = ifelse(l$feature %in% appears_in_both, "bold", "plain")
+    )
+  )
 #export to file
 ggsave(
   plot = plotvar,
