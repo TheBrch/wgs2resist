@@ -108,7 +108,7 @@ for (prop in props) {
     angle_col = 45,
     main = paste0(toupper(prop), " Score"),
     color = colorRampPalette(c("red3", "gold", "forestgreen"))(100),
-    breaks = seq(-1, 1, length.out = 101),
+    breaks = seq(0, 1, length.out = 101),
     filename = file.path("results", "models", paste0(prop, "_summary.png"))
   )
   
