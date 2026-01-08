@@ -107,8 +107,8 @@ for (prop in props) {
     cellheight = 20,
     angle_col = 45,
     main = paste0(toupper(prop), " Score"),
-    color = colorRampPalette(c("red", "white", "blue"))(100),
-    breaks = seq(min(matrix, na.rm = TRUE), 1, length.out = 101),
+    color = colorRampPalette(c("red3", "gold", "forestgreen"))(100),
+    breaks = seq(-1, 1, length.out = 101),
     filename = file.path("results", "models", paste0(prop, "_summary.png"))
   )
   
