@@ -164,8 +164,12 @@ logging.info(
     f"Source susceptibility results:\n{label_stats.to_string(index=False)}\n\n"
 )
 
+correctness = pd.DataFrame({"sample_id": sample_ids})
+
 for name in models:
     logging.info(f"Training {name}...")
+
+    correctness[name] = 0
 
     if name != "xgboost":
         model = define_model(name)
@@ -258,6 +262,10 @@ for name in models:
 
             # y_pred = model.predict(X_test)
             y_pred = (prob_vector >= best_threshold).astype(int)
+            y_correct_pred = (y_test == y_pred).astype(int)
+            correctness.iloc[test_index, correctness.columns.get_loc(name)] = (
+                y_correct_pred
+            )
             cm = confusion_matrix(y_test, y_pred, labels=zero_n_one)
 
             logging.info(
@@ -336,3 +344,9 @@ for name in models:
         logging.info(
             f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable."
         )
+
+correctness.to_csv(
+    os.path.join("results", "models", antibiotic_name, "stats", f"correctness.tsv"),
+    sep="\t",
+    index=False,
+)
