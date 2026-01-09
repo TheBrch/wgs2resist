@@ -18,7 +18,8 @@ p_load(
   tidyr,
   forcats,
   ggtext,
-  reshape2
+  reshape2,
+  ComplexUpset
 )
 
 config <- read_yaml(file.path("config", "config.yaml"))
