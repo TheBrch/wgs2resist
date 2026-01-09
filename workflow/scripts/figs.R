@@ -25,34 +25,34 @@ config <- read_yaml(file.path("config", "config.yaml"))
 models <- unlist(strsplit(config$models, " "))
 
 pr <- list(
-  name = 'pr',
-  x = 'Recall',
-  y = 'Precision'
+  name = "pr",
+  x = "Recall",
+  y = "Precision"
 )
 
 roc <- list(
-  name = 'roc',
-  x = 'FPR',
-  y = 'TPR'
+  name = "roc",
+  x = "FPR",
+  y = "TPR"
 )
 
 args <- commandArgs(trailingOnly = TRUE)
-name = args[1]
+name <- args[1]
 pathe <- file.path("results", "models", name, "stats")
 
-for (graphtype in list(pr, roc)){
+for (graphtype in list(pr, roc)) {
   l <- data.frame()
   met <- data.frame()
-  for (model in models){
+  for (model in models) {
     model_data <- read_tsv(
-      file.path(pathe, paste0(model, "_", graphtype[["name"]],".tsv")),
+      file.path(pathe, paste0(model, "_", graphtype[["name"]], ".tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
-      
+
     model_data$model <- model
     l <- rbind(l, model_data)
-    
+
     metrics <- read_tsv(
       file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
       col_names = TRUE,
@@ -63,30 +63,41 @@ for (graphtype in list(pr, roc)){
   }
   l$fold <- factor(l$fold + 1)
   met$fold <- factor(met$Fold + 1)
-  
+
   met_labels <- met %>%
     mutate(
       auc_score = get(paste0(toupper(graphtype[["name"]]), "_AUC")),
       label = paste0("AUC: ", sprintf("%.3f", auc_score))
     )
-  
-  plotvar <- ggplot(l, aes(x = .data[[tolower(graphtype[["x"]])]], y = .data[[tolower(graphtype[["y"]])]])) +
-    ( if (graphtype[["name"]] == "roc") {
+
+  plotvar <- ggplot(
+    l, aes(
+      x = .data[[tolower(graphtype[["x"]])]],
+      y = .data[[tolower(graphtype[["y"]])]]
+    )
+  ) +
+    (if (graphtype[["name"]] == "roc") {
       geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
-                   color = "gray",
-                   linetype = "dotted")
-      } else {
-        NULL
-      }) +
+        color = "gray",
+        linetype = "dotted"
+      )
+    } else {
+      NULL
+    }) +
     coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
     geom_line(aes(color = fold)) +
     geom_point(aes(color = fold)) +
-    geom_smooth(method = "lm", se = FALSE, color = "blue", formula = y ~ poly(x, 3)) +
+    geom_smooth(
+      method = "lm",
+      se = FALSE,
+      color = "blue",
+      formula = y ~ poly(x, 3)
+    ) +
     geom_text(
       data = met_labels,
       aes(
         x = 0.95,
-        y = 0.25 - (0.07 * (as.numeric(fold) - 1) ),
+        y = 0.25 - (0.07 * (as.numeric(fold) - 1)),
         label = label,
         color = fold
       ),
@@ -94,7 +105,7 @@ for (graphtype in list(pr, roc)){
       size = 3,
       inherit.aes = FALSE
     ) +
-    facet_wrap(~ model, ncol = 2) +
+    facet_wrap(~model, ncol = 2) +
     labs(
       x = graphtype[["x"]],
       y = graphtype[["y"]],
@@ -102,10 +113,12 @@ for (graphtype in list(pr, roc)){
     ) +
     theme_minimal() +
     theme(legend.position = "bottom")
-  
+
   ggsave(
     plot = plotvar,
-    filename = file.path(pathe, "figs", paste0(name, "_", graphtype[["name"]], ".png")),
+    filename = file.path(
+      pathe, "figs", paste0(name, "_", graphtype[["name"]], ".png")
+    ),
     width = 8,
     height = 6,
     dpi = 300,
@@ -118,22 +131,21 @@ l <- data.frame()
 
 featuremodels <- intersect(models, c("logistic", "xgboost"))
 
-for (model in featuremodels){
+for (model in featuremodels) {
   for (fold in 0:4) {
-    
     fold_data <- read_tsv(
       file.path(pathe, paste0(model, "_f", fold, "_features.tsv")),
       col_names = TRUE,
       show_col_types = FALSE
     )
-    
-    fold_data$fold <- as.character(fold+1)
+
+    fold_data$fold <- as.character(fold + 1)
     fold_data$model <- model
     l <- rbind(l, fold_data)
   }
 }
 
-#filter out features that appear only once
+# filter out features that appear only once
 features_in_multiple_folds <- l %>%
   filter(value != 0) %>%
   distinct(feature, model, fold) %>%
@@ -154,22 +166,22 @@ feature_order <- l %>%
   group_by(model) %>%
   slice_max(order_by = max_abs, prop = 0.1, with_ties = FALSE) %>%
   group_by(feature) %>%
-  summarise(max_abs = max(max_abs), number=n(), .groups = "keep")
+  summarise(max_abs = max(max_abs), number = n(), .groups = "keep")
 
 appears_in_both <- feature_order %>%
   filter(number > 1) %>%
   pull(feature)
-  
-#fill in the data from the main dataset, remove 0 value entries
+
+# fill in the data from the main dataset, remove 0 value entries
 l <- l %>%
   right_join(feature_order, by = "feature") %>%
   mutate(feature = fct_reorder(feature, max_abs, .desc = TRUE)) %>%
   filter(value != 0)
 
-#plot out
+# plot out
 plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
   geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~ model, ncol = 2, scales = "free_y") +
+  facet_wrap(~model, ncol = 2, scales = "free_y") +
   labs(
     x = "Feature",
     y = "Value",
@@ -180,14 +192,14 @@ plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
   theme(
     legend.position = "bottom",
     axis.text.x = element_text(
-    angle = 45,
-    vjust = 1,
-    hjust = 1,
-    colour =  ifelse(l$feature %in% appears_in_both, "red", "black"),
-    face = ifelse(l$feature %in% appears_in_both, "bold", "plain")
+      angle = 45,
+      vjust = 1,
+      hjust = 1,
+      colour = ifelse(l$feature %in% appears_in_both, "red", "black"),
+      face = ifelse(l$feature %in% appears_in_both, "bold", "plain")
     )
   )
-#export to file
+# export to file
 ggsave(
   plot = plotvar,
   filename = file.path(pathe, "figs", paste0(name, "_feature_importance.png")),
@@ -201,10 +213,10 @@ ggsave(
 correlation <- read_feather(
   file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
 ) %>%
-  column_to_rownames('index') %>%
+  column_to_rownames("index") %>%
   mutate(across(everything(), ~ round(as.numeric(.), 3)))
 
-toptops <- correlation[appears_in_both,] %>%
+toptops <- correlation[appears_in_both, ] %>%
   t() %>%
   as.data.frame()
 
@@ -212,7 +224,7 @@ filtered <- toptops[
   toptops %>%
     mutate(
       has_high = apply(., 1, function(row) any(abs(row) > 0.9, na.rm = TRUE))
-      ) %>%
+    ) %>%
     pull(has_high),
 ] %>%
   t()
@@ -227,7 +239,7 @@ filtered <- toptops[
 #     high = "blue",
 #     midpoint = 0,
 #     limits = c(-1, 1)
-#   ) + 
+#   ) +
 #   theme_minimal() +
 #   theme(
 #     axis.text.x = element_text(angle = 45, hjust = 1),
@@ -270,4 +282,3 @@ if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
     filename = file.path(pathe, "figs", paste0(name, "_corr.png"))
   )
 }
-
