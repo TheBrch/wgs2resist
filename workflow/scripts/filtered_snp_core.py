@@ -63,11 +63,13 @@ dn_ds_summary.to_csv(os.path.join(args.outdir, "dn_ds.tsv"), sep="\t", index=Fal
 
 collection = pd.concat(tables, ignore_index=True)
 
-group_counts = collection.groupby(["CHR", "POS"]).size().reset_index(name="count")
+group_counts = (
+    collection.groupby(["CHR", "POS", "ALT"]).size().reset_index(name="count")
+)
 valid_groups = group_counts[group_counts["count"] >= 0.05 * len(tables)]
 
 filtered_collection = collection.merge(
-    valid_groups[["CHR", "POS"]], on=["CHR", "POS"], how="inner"
+    valid_groups[["CHR", "POS", "ALT"]], on=["CHR", "POS", "ALT"], how="inner"
 )
 
 wide_output = filtered_collection.pivot_table(
