@@ -2,13 +2,14 @@ checkpoint reformat:
     input:
         script = os.path.join(script_dir, "reformat.R"),
         sus = suscept,
-        tab = os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv")
+        tab = os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
+        unitigs = os.path.join("results", "unitig-caller", "filtered_unitigs.rtab")
     output:
         directory(os.path.join("results", "training_data"))
     conda:
         os.path.join(env_dir, "R.yaml")
     shell:
-        "Rscript {input.script} {input.tab}"
+        "Rscript {input.script} {input.tab} {input.unitigs}"
 
 
 rule binarize:
