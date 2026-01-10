@@ -21,3 +21,13 @@ rule call_unitigs:
         unitig-caller --call --refs {input.refs} --rtab --write-graph --threads {threads} --out {params.outdir}
         '''
     
+rule filter_unitigs:
+    input:
+        script = os.path.join(script_dir, "filter_unitigs.py"),
+        uni = os.path.join("results", "unitig-caller", "unitigs.rtab")
+    output:
+        os.path.join("results", "unitig-caller", "filtered_unitigs.rtab")
+    conda:
+        os.path.join(env_dir, "predictor.yaml")
+    shell:
+        'python3 {input.script} {input.uni} > {output}'
