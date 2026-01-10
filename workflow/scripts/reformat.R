@@ -70,7 +70,7 @@ if (!dir.exists(file.path("results", "joint_data"))) {
 for (i in colnames(sus_data)) {
   n <- gsub("\\/", "_", i)
   fn <- file.path("results", "training_data", paste0(n, ".tsv"))
-  fn_uni <- file.path("results", "joint_data", paste0(n, "_unitig.feather"))
+  fn_uni <- file.path("results", "training_data", paste0(n, "_unitig.feather"))
   is_susceptible <- sus_data %>%
     select(all_of(i)) %>%
     na.omit() %>%
