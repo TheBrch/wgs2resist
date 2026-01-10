@@ -67,4 +67,5 @@ def get_antibiotics():
         if match:
             name_part = match.groups()[0]
             antibiotics.append(name_part)
+    antibiotics += [a + "_unitig" for a in antibiotics]
     return antibiotics
