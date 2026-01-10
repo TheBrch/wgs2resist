@@ -8,6 +8,8 @@ checkpoint reformat:
         directory(os.path.join("results", "training_data"))
     conda:
         os.path.join(env_dir, "R.yaml")
+    threads:
+        workflow.cores/2
     shell:
         "Rscript {input.script} {input.tab} {input.unitigs}"
 
