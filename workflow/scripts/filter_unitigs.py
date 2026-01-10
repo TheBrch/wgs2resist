@@ -1,21 +1,20 @@
 import numpy as np
 import os, sys
-import yaml
-
-with open(os.path.join("config", "config.yaml"), "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
-
-
-def get_file(i):
-    with open(config["metadata"], "r") as f:
-        for line in f:
-            fields = line.strip().split("\t")
-            if i in fields[1]:
-                fields[2]
-        return i
 
 
 unitigs = sys.argv[1]
+metadata = sys.argv[2]
+
+
+def get_file(i):
+    i = i.removesuffix("_filtered")
+    with open(metadata, "r") as f:
+        for line in f:
+            fields = line.strip().split("\t")
+            if i in fields[2]:
+                return fields[1]
+        return i
+
 
 with open(unitigs, "r") as f:
     for line in f:

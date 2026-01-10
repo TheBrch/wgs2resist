@@ -24,10 +24,11 @@ rule call_unitigs:
 rule filter_unitigs:
     input:
         script = os.path.join(script_dir, "filter_unitigs.py"),
-        uni = os.path.join("results", "unitig-caller", "unitigs.rtab")
+        uni = os.path.join("results", "unitig-caller", "unitigs.rtab"),
+        meta = os.path.abspath(metadata)
     output:
         os.path.join("results", "unitig-caller", "filtered_unitigs.rtab")
     conda:
         os.path.join(env_dir, "predictor.yaml")
     shell:
-        'python3 {input.script} {input.uni} > {output}'
+        'python3 {input.script} {input.uni} {input.meta} > {output}'
