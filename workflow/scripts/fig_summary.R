@@ -20,7 +20,8 @@ p_load(
   ggtext,
   reshape2,
   grid,
-  gridExtra
+  gridExtra,
+  ComplexUpset
 )
 
 folders <- basename(
@@ -34,6 +35,7 @@ config <- read_yaml(file.path("config", "config.yaml"))
 models <- unlist(strsplit(config$models, " "))
 
 l <- data.frame()
+correctness <- data.frame()
 for (name in folders) {
   pathe <- file.path("results", "models", name, "stats")
   for (model in models) {
@@ -59,6 +61,44 @@ for (name in folders) {
       )
     l <- rbind(l, m)
   }
+  ab_correctness <- read_tsv(
+    file.path(pathe, "correctness.tsv")
+  ) %>% select(-sample_id)
+  correctness <- rbind(correctness, ab_correctness)
+  up_set_plots <- list()
+  up_set <- upset(
+    df,
+    intersect = sort(colnames(df)),
+    sort_sets = FALSE,
+    name = "ML models",
+    base_annotations = list(
+      "Correct predictions" = (
+        intersection_size(
+          counts = TRUE
+        ) +
+          ggtitle(name)
+      )
+    ),
+    set_sizes = (
+      upset_set_size(
+        mapping = aes(fill = group),
+        geom = geom_bar(width = 0.6),
+      ) +
+        geom_text(
+          aes(label = after_stat(count)),
+          hjust = -0.2, stat = "count"
+        ) +
+        scale_fill_hue() +
+        guides(fill = "none") +
+        ylab("Correct predictions")
+    ),
+    themes = upset_modify_themes(
+      list(
+        "overall" = theme_minimal()
+      )
+    )
+  )
+  c(my_list, list(up_set))
 }
 
 average_metrics <- l %>%
@@ -135,27 +175,58 @@ png(
   width = 2 * matrix_width, height = 2 * matrix_height, units = "in", res = 300
 )
 
-combined_plot <- grid.arrange(
-  heatmap_plots[[1]], heatmap_plots[[2]],
-  heatmap_plots[[3]], heatmap_plots[[4]],
-  ncol = 2, nrow = 2
+n_cols <- 2
+n_rows <- ceiling(length(heatmap_plots) / n_cols)
+
+combined_plot <- do.call(
+  grid.arrange,
+  c(heatmap_plots, ncol = n_cols, nrow = n_rows)
 )
 
-grid.text("A",
-  x = 0.01, y = 0.99, just = c("left", "top"),
-  gp = gpar(fontsize = 14, fontface = "bold")
+labels <- LETTERS[seq_along(heatmap_plots)]
+
+for (i in seq_along(labels)) {
+  row <- ceiling(i / n_cols)
+  col <- (i - 1) %% n_cols + 1
+
+  x <- (col - 1) * (1 / n_cols) + 0.01
+  y <- 1 - (row - 1) * (1 / n_rows) - 0.01
+
+  grid.text(labels[i],
+    x = x, y = y, just = c("left", "top"),
+    gp = gpar(fontsize = 14, fontface = "bold")
+  )
+}
+
+dev.off()
+
+png(
+  file.path("results", "models", "combined_up_set.png"),
+  width = 3 * matrix_width, height = 4 * matrix_height, units = "in", res = 300
 )
-grid.text("B",
-  x = 0.51, y = 0.99, just = c("left", "top"),
-  gp = gpar(fontsize = 14, fontface = "bold")
+
+n_rows <- ceiling(length(up_set_plots) / n_cols)
+
+combined_plot <- do.call(
+  grid.arrange,
+  c(up_set_plots, ncol = n_cols, nrow = n_rows)
 )
-grid.text("C",
-  x = 0.01, y = 0.49, just = c("left", "top"),
-  gp = gpar(fontsize = 14, fontface = "bold")
-)
-grid.text("D",
-  x = 0.51, y = 0.49, just = c("left", "top"),
-  gp = gpar(fontsize = 14, fontface = "bold")
-)
+
+labels <- LETTERS[seq_along(up_set_plots)]
+
+for (i in seq_along(labels)) {
+  row <- ceiling(i / n_cols)
+  col <- (i - 1) %% n_cols + 1
+
+  x <- (col - 1) * (1 / n_cols) + 0.01
+  y <- 1 - (row - 1) * (1 / n_rows) - 0.01
+
+  grid.text(labels[i],
+    x = x, y = y, just = c("left", "top"),
+    gp = gpar(fontsize = 14, fontface = "bold")
+  )
+}
+
+
 
 dev.off()
