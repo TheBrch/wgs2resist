@@ -6,6 +6,7 @@
 
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LogisticRegression
@@ -45,6 +46,11 @@ def log_exc(exc_type, exc_value, exc_tb):
 
 
 sys.excepthook = log_exc
+
+with open(os.path.join("config", "config.yaml"), "r") as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+
+models = config["models"].split(" ")
 
 X_bin = pd.read_pickle(X_bin_file)
 sample_ids = X_bin.pop("rownames")
@@ -91,8 +97,6 @@ def define_model(name):
             logging.error("Unknown model name")
             return
 
-
-models = ["logistic", "gaussian", "svm", "xgboost"]
 
 logging.info(f"-----{antibiotic_name}-----\n")
 logging.info(
