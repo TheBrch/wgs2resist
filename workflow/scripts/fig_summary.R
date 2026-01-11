@@ -178,10 +178,18 @@ png(
 n_cols <- 2
 n_rows <- ceiling(length(heatmap_plots) / n_cols)
 
-combined_plot <- do.call(
-  grid.arrange,
-  c(heatmap_plots, ncol = n_cols, nrow = n_rows)
-)
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))
+
+for (i in seq_along(heatmap_plots)) {
+  row <- ceiling(i / n_cols)
+  col <- (i - 1) %% n_cols + 1
+
+  print(
+    heatmap_plots[[i]],
+    vp = viewport(layout.pos.row = row, layout.pos.col = col)
+  )
+}
 
 labels <- LETTERS[seq_along(heatmap_plots)]
 
@@ -207,10 +215,18 @@ png(
 
 n_rows <- ceiling(length(up_set_plots) / n_cols)
 
-combined_plot <- do.call(
-  grid.arrange,
-  c(up_set_plots, ncol = n_cols, nrow = n_rows)
-)
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))
+
+for (i in seq_along(up_set_plots)) {
+  row <- ceiling(i / n_cols)
+  col <- (i - 1) %% n_cols + 1
+
+  print(
+    up_set_plots[[i]],
+    vp = viewport(layout.pos.row = row, layout.pos.col = col)
+  )
+}
 
 labels <- LETTERS[seq_along(up_set_plots)]
 
