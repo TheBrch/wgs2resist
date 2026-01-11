@@ -5,10 +5,6 @@ rule train:
         lab = os.path.join("results", "binarized_data", "{ab}_lab.pkl"),
         sus = suscept
     output:
-        expand(
-            os.path.join("results", "models", "{{ab}}", "{model}.pkl"),
-            model=models,
-        ),
         crossval = expand(
             os.path.join("results", "models", "{{ab}}", "stats", "{model}_crossval_results.tsv"),
             model=models

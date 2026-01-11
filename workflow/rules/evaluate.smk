@@ -1,9 +1,9 @@
 rule figs:
     input:
         script = os.path.join(script_dir, "figs.R"),
-        src = expand(
-            os.path.join("results", "models", "{{ab}}", "{model}.pkl"),
-            model=models,
+        crossval = expand(
+            os.path.join("results", "models", "{{ab}}", "stats", "{model}_crossval_results.tsv"),
+            model=models
         )
     output:
         os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png")
