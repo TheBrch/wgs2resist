@@ -8,7 +8,7 @@ rule condense:
         os.path.join(env_dir, "predictor.yaml")
     threads: 8
     shell:
-        "python3 {input.script} {input.table}"
+        "python3 {input.script} --threads {threads} {input.table}"
 
 
 rule condense_unitig:
@@ -21,4 +21,4 @@ rule condense_unitig:
         os.path.join(env_dir, "predictor.yaml")
     threads: 8
     shell:
-        "python3 {input.script} {input.table}"
+        "python3 {input.script} --threads {threads} {input.table}"

@@ -1,14 +1,26 @@
+import os
+import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--threads", type=int)
+parser.add_argument("X_bin_file")
+args = parser.parse_args()
+
+if args.threads:
+    os.environ["OMP_NUM_THREADS"] = str(args.threads)
+    os.environ["OPENBLAS_NUM_THREADS"] = str(args.threads)
+
 from sklearn.feature_selection import VarianceThreshold
 import numpy as np
 import pandas as pd
-import os
-import sys
 import logging
 import gc
 
+
 os.makedirs(os.path.join("results", "condensed_data"), exist_ok=True)
 
-X_bin_file = sys.argv[1]
+X_bin_file = args.X_bin_file
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
 
 logging.basicConfig(
@@ -25,8 +37,10 @@ def log_exc(exc_type, exc_value, exc_tb):
 
 sys.excepthook = log_exc
 
+logging.info(f"Running on {args.threads} threads")
 
-def get_correlated(X, threshold=0.9, chunksize=1000):
+
+def get_correlated(X, threshold=0.9, chunksize=20000):
     n_features = X.shape[1]
     to_drop = set()
     hi_corr = {}
@@ -82,7 +96,7 @@ def get_correlated(X, threshold=0.9, chunksize=1000):
         del X_i
         gc.collect()
 
-        if (i_a // chunksize + 1) % 10 == 0:
+        if (i_a // chunksize + 1) % 2 == 0:
             logging.info(
                 f"Processed {i_b}\t/{n_features} features. Found {len(to_drop)} strongly correlated features."
             )
