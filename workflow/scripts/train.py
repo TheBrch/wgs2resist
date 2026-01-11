@@ -104,20 +104,18 @@ logging.info(
     f"Source susceptibility results:\n{label_stats.to_string(index=False)}\n\n"
 )
 
-correctness = pd.DataFrame({"sample_id": sample_ids})
 
-for name in models:
-    logging.info(f"Training {name}...")
+if splitcount > 1:
+    correctness = pd.DataFrame({"sample_id": sample_ids})
 
-    correctness[name] = 0
+    data_collection = pd.DataFrame()
+    all_pr = pd.DataFrame()
+    all_roc = pd.DataFrame()
 
-    logging.info(f"\nCross-validation of {name}...\n")
-    if splitcount > 1:
-        skf = StratifiedGroupKFold(n_splits=splitcount, shuffle=True, random_state=42)
-        data_collection = pd.DataFrame()
-        all_pr = pd.DataFrame()
-        all_roc = pd.DataFrame()
-        for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y, patients)):
+    skf = StratifiedGroupKFold(n_splits=splitcount, shuffle=True, random_state=42)
+    for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y, patients)):
+        for name in models:
+            logging.info(f"\nCross-validation of {name}...\n")
             model = define_model(name)
             logging.info(f"{name} - Fold {fold}...\n")
             logging.info(f"  Train: index={train_index}")
@@ -160,17 +158,25 @@ for name in models:
 
             best_threshold = pr_thresholds[f1_scores.argmax()]
 
-            roc_df = pd.DataFrame({"fpr": fpr, "tpr": tpr, "threshold": roc_thresholds})
-            roc_df["fold"] = fold
+            roc_df = pd.DataFrame(
+                {
+                    "fpr": fpr,
+                    "tpr": tpr,
+                    "threshold": roc_thresholds,
+                    "fold": fold,
+                    "modelname": name,
+                }
+            )
 
             prc_df = pd.DataFrame(
                 {
                     "precision": precision,
                     "recall": recall,
                     "threshold": pr_thresholds[: len(precision)],
+                    "fold": fold,
+                    "modelname": name,
                 }
             )
-            prc_df["fold"] = fold
 
             if np.any(coef != False):
                 features = pd.DataFrame(
@@ -191,6 +197,8 @@ for name in models:
             # y_pred = model.predict(X_test)
             y_pred = (prob_vector >= best_threshold).astype(int)
             y_correct_pred = (y_test == y_pred).astype(int)
+            if name not in correctness.columns:
+                correctness[name] = 0
             correctness.iloc[test_index, correctness.columns.get_loc(name)] = (
                 y_correct_pred
             )
@@ -221,6 +229,7 @@ for name in models:
                     "Precision@Thresh": [precision_score(y_test, y_pred)],
                     "Recall@Thresh": [recall_score(y_test, y_pred)],
                     "Thresh": [best_threshold],
+                    "modelname": [name],
                 }
             )
 
@@ -229,38 +238,27 @@ for name in models:
             all_pr = pd.concat([all_pr, prc_df], ignore_index=True)
             all_roc = pd.concat([all_roc, roc_df], ignore_index=True)
 
-        data_collection.to_csv(
-            os.path.join(
-                "results",
-                "models",
-                antibiotic_name,
-                "stats",
-                f"{name}_crossval_results.tsv",
-            ),
-            sep="\t",
-            index=False,
-        )
-        all_roc.to_csv(
-            os.path.join(
-                "results", "models", antibiotic_name, "stats", f"{name}_roc.tsv"
-            ),
-            sep="\t",
-            index=False,
-        )
-        all_pr.to_csv(
-            os.path.join(
-                "results", "models", antibiotic_name, "stats", f"{name}_pr.tsv"
-            ),
-            sep="\t",
-            index=False,
-        )
-    else:
-        logging.info(
-            f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable."
-        )
+    tsv_df = {"crossval_results": data_collection, "roc": all_roc, "pr": all_pr}
+    for suffix, dataframe in tsv_df.items():
+        for name, group_df in dataframe.groupby("modelname"):
+            group_df.drop(columns=["modelname"]).to_csv(
+                os.path.join(
+                    "results",
+                    "models",
+                    antibiotic_name,
+                    "stats",
+                    f"{name}_{suffix}.tsv",
+                ),
+                sep="\t",
+                index=False,
+            )
 
-correctness.to_csv(
-    os.path.join("results", "models", antibiotic_name, "stats", f"correctness.tsv"),
-    sep="\t",
-    index=False,
-)
+    correctness.to_csv(
+        os.path.join("results", "models", antibiotic_name, "stats", f"correctness.tsv"),
+        sep="\t",
+        index=False,
+    )
+else:
+    logging.info(
+        f"{name} - Source data contains too few samples of the least populated class, cross-validation not viable."
+    )
