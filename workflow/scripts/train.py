@@ -60,6 +60,7 @@ patients = sample_ids.str.split("_").str[0]
 y = pd.read_pickle(sys.argv[2]).values.ravel()
 
 zero_n_one, counts = np.unique(y, return_counts=True)
+splitcount = min(min(counts), 5)
 
 label_stats = pd.DataFrame(
     {
@@ -109,18 +110,6 @@ for name in models:
     logging.info(f"Training {name}...")
 
     correctness[name] = 0
-
-    if name != "xgboost":
-        model = define_model(name)
-        model.fit(X_bin, y)
-        joblib.dump(
-            model, os.path.join("results", "models", antibiotic_name, f"{name}.pkl")
-        )
-        logging.info(f"{name} model exported.")
-
-    best_xgb_score = -1
-
-    splitcount = min(min(counts), 5)
 
     logging.info(f"\nCross-validation of {name}...\n")
     if splitcount > 1:
@@ -239,20 +228,6 @@ for name in models:
             data_collection = pd.concat([data_collection, newdf], ignore_index=True)
             all_pr = pd.concat([all_pr, prc_df], ignore_index=True)
             all_roc = pd.concat([all_roc, roc_df], ignore_index=True)
-
-            if name == "xgboost":
-                if score > best_xgb_score:
-                    best_xgb_fold = fold
-                    best_xgb_score = score
-                    best_xgb_model = model
-                # model = define_xgb()
-
-        if name == "xgboost":
-            joblib.dump(
-                best_xgb_model,
-                os.path.join("results", "models", antibiotic_name, f"{name}.pkl"),
-            )
-            logging.info(f"Best {name} model from fold {best_xgb_fold} exported.")
 
         data_collection.to_csv(
             os.path.join(
