@@ -114,24 +114,25 @@ if splitcount > 1:
 
     skf = StratifiedGroupKFold(n_splits=splitcount, shuffle=True, random_state=42)
     for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y, patients)):
+        logging.info(f"\n------Fold {fold}------\n")
+        logging.info(f"  Train: index={sample_ids.iloc[train_index].tolist()}")
+        logging.info(f"         group={patients[train_index]}")
+        logging.info(f"  Test:  index={sample_ids.iloc[test_index].tolist()}")
+        logging.info(f"         group={patients[test_index]}")
+
+        X_pre_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
+        y_pre_train, y_test = y[train_index], y[test_index]
+
+        if not np.all(np.isin(zero_n_one, y_pre_train)):
+            logging.info(f"Fold {fold} training data not diverse, skipping...")
+            continue
+
+        sm = SMOTE(random_state=42)
+        X_train, y_train = sm.fit_resample(X_pre_train, y_pre_train)
+
         for name in models:
-            logging.info(f"\nCross-validation of {name}...\n")
+            logging.info(f"\nCross-validation of {name} - Fold {fold}...\n")
             model = define_model(name)
-            logging.info(f"{name} - Fold {fold}...\n")
-            logging.info(f"  Train: index={train_index}")
-            logging.info(f"         group={patients[train_index]}")
-            logging.info(f"  Test:  index={test_index}")
-            logging.info(f"         group={patients[test_index]}")
-
-            X_pre_train, X_test = X_bin.iloc[train_index], X_bin.iloc[test_index]
-            y_pre_train, y_test = y[train_index], y[test_index]
-
-            if not np.all(np.isin(zero_n_one, y_pre_train)):
-                logging.info(f"Fold {fold} training data not diverse, skipping...")
-                continue
-
-            sm = SMOTE(random_state=42)
-            X_train, y_train = sm.fit_resample(X_pre_train, y_pre_train)
 
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
