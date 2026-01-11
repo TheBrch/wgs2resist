@@ -62,13 +62,14 @@ for (name in folders) {
     l <- rbind(l, m)
   }
   ab_correctness <- read_tsv(
-    file.path(pathe, "correctness.tsv")
+    file.path(pathe, "correctness.tsv"),
+    show_col_types = FALSE
   ) %>% select(-sample_id)
   correctness <- rbind(correctness, ab_correctness)
   up_set_plots <- list()
   up_set <- upset(
-    df,
-    intersect = sort(colnames(df)),
+    ab_correctness,
+    intersect = sort(colnames(ab_correctness)),
     sort_sets = FALSE,
     name = "ML models",
     base_annotations = list(
@@ -82,7 +83,7 @@ for (name in folders) {
     set_sizes = (
       upset_set_size(
         mapping = aes(fill = group),
-        geom = geom_bar(width = 0.6),
+        geom = geom_bar(width = 0.6)
       ) +
         geom_text(
           aes(label = after_stat(count)),
@@ -98,7 +99,7 @@ for (name in folders) {
       )
     )
   )
-  c(my_list, list(up_set))
+  c(up_set_plots, list(up_set))
 }
 
 average_metrics <- l %>%
