@@ -36,6 +36,7 @@ models <- unlist(strsplit(config$models, " "))
 
 l <- data.frame()
 correctness <- data.frame()
+up_set_plots <- list()
 for (name in folders) {
   pathe <- file.path("results", "models", name, "stats")
   for (model in models) {
@@ -45,7 +46,7 @@ for (name in folders) {
       show_col_types = FALSE
     )
     metrics$model <- model
-    metrics$ab <- name
+    metrics$ab <- gsub("_", " ", name)
 
     m <- metrics %>%
       group_by(model, ab) %>%
@@ -66,7 +67,6 @@ for (name in folders) {
     show_col_types = FALSE
   ) %>% select(-sample_id)
   correctness <- rbind(correctness, ab_correctness)
-  up_set_plots <- list()
   up_set <- upset(
     ab_correctness,
     intersect = sort(colnames(ab_correctness)),
@@ -77,7 +77,7 @@ for (name in folders) {
         intersection_size(
           counts = TRUE
         ) +
-          ggtitle(name)
+          ggtitle(gsub("_", "/", name))
       )
     ),
     set_sizes = (
@@ -99,8 +99,41 @@ for (name in folders) {
       )
     )
   )
-  c(up_set_plots, list(up_set))
+  up_set_plots <- c(up_set_plots, list(up_set))
 }
+up_set_overall <- upset(
+    correctness,
+    intersect = sort(colnames(correctness)),
+    sort_sets = FALSE,
+    name = "ML models",
+    base_annotations = list(
+      "Correct predictions" = (
+        intersection_size(
+          counts = TRUE
+        ) +
+          ggtitle("Overall")
+      )
+    ),
+    set_sizes = (
+      upset_set_size(
+        mapping = aes(fill = group),
+        geom = geom_bar(width = 0.6)
+      ) +
+        geom_text(
+          aes(label = after_stat(count)),
+          hjust = -0.2, stat = "count"
+        ) +
+        scale_fill_hue() +
+        guides(fill = "none") +
+        ylab("Correct predictions")
+    ),
+    themes = upset_modify_themes(
+      list(
+        "overall" = theme_minimal()
+      )
+    )
+  )
+up_set_plots <- c(up_set_plots, list(up_set_overall))
 
 average_metrics <- l %>%
   group_by(model) %>%
@@ -172,78 +205,46 @@ for (prop in props) {
 }
 
 png(
-  file.path("results", "models", "combined_metrics_summary.png"),
-  width = 2 * matrix_width, height = 2 * matrix_height, units = "in", res = 300
-)
-
-n_cols <- 2
-n_rows <- ceiling(length(heatmap_plots) / n_cols)
-
-grid.newpage()
-pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))
-
-for (i in seq_along(heatmap_plots)) {
-  row <- ceiling(i / n_cols)
-  col <- (i - 1) %% n_cols + 1
-
-  print(
-    heatmap_plots[[i]],
-    vp = viewport(layout.pos.row = row, layout.pos.col = col)
-  )
-}
-
-labels <- LETTERS[seq_along(heatmap_plots)]
-
-for (i in seq_along(labels)) {
-  row <- ceiling(i / n_cols)
-  col <- (i - 1) %% n_cols + 1
-
-  x <- (col - 1) * (1 / n_cols) + 0.01
-  y <- 1 - (row - 1) * (1 / n_rows) - 0.01
-
-  grid.text(labels[i],
-    x = x, y = y, just = c("left", "top"),
-    gp = gpar(fontsize = 14, fontface = "bold")
-  )
-}
-
-dev.off()
-
-png(
   file.path("results", "models", "combined_up_set.png"),
-  width = 3 * matrix_width, height = 4 * matrix_height, units = "in", res = 300
+  width = 20, height = 24, units = "in", res = 300
 )
-
+n_cols = 2
 n_rows <- ceiling(length(up_set_plots) / n_cols)
 
 grid.newpage()
 pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))
 
+# Plot each UpSet in its position
 for (i in seq_along(up_set_plots)) {
   row <- ceiling(i / n_cols)
   col <- (i - 1) %% n_cols + 1
-
-  print(
-    up_set_plots[[i]],
-    vp = viewport(layout.pos.row = row, layout.pos.col = col)
-  )
+  
+  print(up_set_plots[[i]], vp = viewport(layout.pos.row = row, layout.pos.col = col))
 }
 
-labels <- LETTERS[seq_along(up_set_plots)]
+dev.off()
 
-for (i in seq_along(labels)) {
-  row <- ceiling(i / n_cols)
-  col <- (i - 1) %% n_cols + 1
+png(
+  file.path("results", "models", "combined_metrics_summary.png"),
+  width = 2 * matrix_width, height = 2 * matrix_height, units = "in", res = 300
+)
 
-  x <- (col - 1) * (1 / n_cols) + 0.01
-  y <- 1 - (row - 1) * (1 / n_rows) - 0.01
+combined_plot <- grid.arrange(
+  heatmap_plots[[1]], heatmap_plots[[2]],
+  heatmap_plots[[3]], heatmap_plots[[4]],
+  ncol = 2, nrow = 2
+)
 
+# Add labels programmatically
+labels <- c("A", "B", "C", "D")
+x_positions <- c(0.01, 0.51, 0.01, 0.51)
+y_positions <- c(0.99, 0.99, 0.49, 0.49)
+
+for (i in 1:4) {
   grid.text(labels[i],
-    x = x, y = y, just = c("left", "top"),
+    x = x_positions[i], y = y_positions[i], just = c("left", "top"),
     gp = gpar(fontsize = 14, fontface = "bold")
   )
 }
-
-
 
 dev.off()
