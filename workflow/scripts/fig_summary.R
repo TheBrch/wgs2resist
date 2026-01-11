@@ -102,37 +102,37 @@ for (name in folders) {
   up_set_plots <- c(up_set_plots, list(up_set))
 }
 up_set_overall <- upset(
-    correctness,
-    intersect = sort(colnames(correctness)),
-    sort_sets = FALSE,
-    name = "ML models",
-    base_annotations = list(
-      "Correct predictions" = (
-        intersection_size(
-          counts = TRUE
-        ) +
-          ggtitle("Overall")
-      )
-    ),
-    set_sizes = (
-      upset_set_size(
-        mapping = aes(fill = group),
-        geom = geom_bar(width = 0.6)
+  correctness,
+  intersect = sort(colnames(correctness)),
+  sort_sets = FALSE,
+  name = "ML models",
+  base_annotations = list(
+    "Correct predictions" = (
+      intersection_size(
+        counts = TRUE
       ) +
-        geom_text(
-          aes(label = after_stat(count)),
-          hjust = -0.2, stat = "count"
-        ) +
-        scale_fill_hue() +
-        guides(fill = "none") +
-        ylab("Correct predictions")
-    ),
-    themes = upset_modify_themes(
-      list(
-        "overall" = theme_minimal()
-      )
+        ggtitle("Overall")
+    )
+  ),
+  set_sizes = (
+    upset_set_size(
+      mapping = aes(fill = group),
+      geom = geom_bar(width = 0.6)
+    ) +
+      geom_text(
+        aes(label = after_stat(count)),
+        hjust = -0.2, stat = "count"
+      ) +
+      scale_fill_hue() +
+      guides(fill = "none") +
+      ylab("Correct predictions")
+  ),
+  themes = upset_modify_themes(
+    list(
+      "overall" = theme_minimal()
     )
   )
+)
 up_set_plots <- c(up_set_plots, list(up_set_overall))
 
 average_metrics <- l %>%
@@ -208,7 +208,7 @@ png(
   file.path("results", "models", "combined_up_set.png"),
   width = 20, height = 24, units = "in", res = 300
 )
-n_cols = 2
+n_cols <- 2
 n_rows <- ceiling(length(up_set_plots) / n_cols)
 
 grid.newpage()
@@ -218,8 +218,11 @@ pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))
 for (i in seq_along(up_set_plots)) {
   row <- ceiling(i / n_cols)
   col <- (i - 1) %% n_cols + 1
-  
-  print(up_set_plots[[i]], vp = viewport(layout.pos.row = row, layout.pos.col = col))
+
+  print(
+    up_set_plots[[i]],
+    vp = viewport(layout.pos.row = row, layout.pos.col = col)
+  )
 }
 
 dev.off()
