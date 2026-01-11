@@ -1,11 +1,7 @@
 import pandas as pd
 import numpy as np
-import yaml
 import os
 import sys
-
-with open(os.path.join("config", "config.yaml"), "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
 
 data_file = sys.argv[1]
 antibiotic_name = data_file.split("/")[-1].split(".")[0]
