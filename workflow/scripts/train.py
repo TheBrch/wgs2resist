@@ -21,12 +21,83 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.svm import SVC
+from sklearn.base import BaseEstimator, ClassifierMixin
 import joblib
 import logging
 import os
 import sys
 import xgboost as xgb
 from imblearn.over_sampling import SMOTE
+
+
+class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, estimators, fitted_estimators):
+        self.estimators = estimators
+        self.fitted_estimators = fitted_estimators
+
+    def fit(self, X=None, y=None, groups=None):
+        from scipy.optimize import minimize
+        from sklearn.utils.validation import check_X_y
+        from sklearn.model_selection import cross_val_predict
+
+        if X is None or y is None:
+            raise ValueError("X and y are required for setting weights")
+        if groups is None:
+            raise ValueError("groups are required for StratifiedGroupKFold")
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+
+        probas = []
+        for name, estimator in self.estimators:
+            oof_proba = cross_val_predict(
+                estimator,
+                X,
+                y,
+                groups=groups,
+                cv=StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42),
+                method="predict_proba",
+            )[:, 1]
+            probas.append(oof_proba)
+        probas = np.column_stack(probas)
+
+        def objective(w):
+            w = np.maximum(w, 0)
+            w /= np.sum(w)
+            y_pred = probas @ w
+            return np.mean((y - y_pred) ** 2)
+
+        w0 = np.ones(len(self.estimators)) / len(self.estimators)
+        bounds = [(0, None)] * len(self.estimators)
+        res = minimize(objective, w0, bounds=bounds, method="L-BFGS-B")
+
+        w_opt = np.maximum(res.x, 0)
+        w_opt /= w_opt.sum()
+        self.weights_ = w_opt
+        self.estimators_ = list(self.fitted_estimators)
+
+        return self
+
+    def predict_proba(self, X):
+        from sklearn.utils.validation import check_is_fitted, check_array
+
+        check_is_fitted(self)
+        X = check_array(X)
+
+        probas = []
+        for name, estimator in self.estimators_:
+            probas.append(estimator.predict_proba(X)[:, 1])
+
+        return sum(w * p for w, p in zip(self.weights_, probas))
+
+    def predict(self, X):
+        proba = self.predict_proba(X)
+        return (proba >= 0.5).astype(int)
+
+    def score(self, X, y):
+        from sklearn.metrics import accuracy_score
+
+        return accuracy_score(y, self.predict(X))
+
 
 X_bin_file = sys.argv[1]
 antibiotic_name = X_bin_file.split("/")[-1].split(".")[0]
@@ -50,7 +121,8 @@ sys.excepthook = log_exc
 with open(os.path.join("config", "config.yaml"), "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-models = config["models"].split(" ")
+config_models = config["models"].split(" ")
+models = [*config_models, "wec"]
 
 X_bin = pd.read_pickle(X_bin_file)
 sample_ids = X_bin.pop("rownames")
@@ -69,6 +141,8 @@ label_stats = pd.DataFrame(
         "Ratio": [f"{(count / sum(counts)):.2f}" for count in counts],
     }
 )
+
+fit_models = []
 
 
 def define_model(name):
@@ -94,6 +168,11 @@ def define_model(name):
             return SVC(C=1.0, kernel="rbf", probability=True)
         case "logistic":
             return LogisticRegression(C=1.0, solver="liblinear", penalty="l1")
+        case "wec":
+            return WeightedEnsembleClassifier(
+                estimators=[define_model(e) for e in config_models],
+                fitted_estimators=fit_models,
+            )
         case _:
             logging.error("Unknown model name")
             return
@@ -114,9 +193,10 @@ if splitcount > 1:
 
     skf = StratifiedGroupKFold(n_splits=splitcount, shuffle=True, random_state=42)
     for fold, (train_index, test_index) in enumerate(skf.split(X_bin, y, patients)):
+        train_patients = patients[train_index]
         logging.info(f"\n------Fold {fold}------\n")
         logging.info(f"  Train: index={sample_ids.iloc[train_index].tolist()}")
-        logging.info(f"         group={patients[train_index]}")
+        logging.info(f"         group={train_patients}")
         logging.info(f"  Test:  index={sample_ids.iloc[test_index].tolist()}")
         logging.info(f"         group={patients[test_index]}")
 
@@ -136,6 +216,8 @@ if splitcount > 1:
 
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+            elif name == "wec":
+                model.fit(X_train, y_train, train_patients)
             else:
                 model.fit(X_train, y_train)
             logging.info(f"Model fitted.")
@@ -238,6 +320,8 @@ if splitcount > 1:
             data_collection = pd.concat([data_collection, newdf], ignore_index=True)
             all_pr = pd.concat([all_pr, prc_df], ignore_index=True)
             all_roc = pd.concat([all_roc, roc_df], ignore_index=True)
+
+        fit_models = []
 
     tsv_df = {"crossval_results": data_collection, "roc": all_roc, "pr": all_pr}
     for suffix, dataframe in tsv_df.items():
