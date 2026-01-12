@@ -38,8 +38,6 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, X=None, y=None, groups=None):
         from scipy.optimize import minimize
         from sklearn.utils.validation import check_X_y
-        from sklearn.model_selection import cross_val_predict
-        from imblearn.pipeline import Pipeline
         from imblearn.over_sampling import SMOTE
 
         if X is None or y is None:
@@ -52,17 +50,33 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
         probas = []
         cv = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
         for name, estimator in self.estimators:
-            pipe = Pipeline(
-                [("smote", SMOTE(random_state=42)), ("classifier", estimator)]
-            )
-            oof_proba = cross_val_predict(
-                pipe,
-                X,
-                y,
-                groups=groups,
-                cv=cv,
-                method="predict_proba",
-            )[:, 1]
+            oof_proba = np.zeros(len(X))
+
+            for train_idx, test_idx in cv.split(X, y, groups):
+                X_pre_train_fold, y_pre_train_fold = X[train_idx], y[train_idx]
+                X_test_fold, y_test_fold = X[test_idx], y[test_idx]
+
+                smote = SMOTE(random_state=42)
+                X_train_fold, y_train_fold = smote.fit_resample(
+                    X_pre_train_fold, y_pre_train_fold
+                )
+
+                from sklearn.base import clone
+
+                fold_estimator = clone(estimator)
+
+                if name == "xgboost":
+                    fold_estimator.fit(
+                        X_train_fold,
+                        y_train_fold,
+                        eval_set=[(X_test_fold, y_test_fold)],
+                    )
+                else:
+                    fold_estimator.fit(
+                        X_train_fold,
+                        y_train_fold,
+                    )
+                oof_proba[test_idx] = fold_estimator.predict_proba(X_test_fold)[:, 1]
             probas.append(oof_proba)
         probas = np.column_stack(probas)
 
