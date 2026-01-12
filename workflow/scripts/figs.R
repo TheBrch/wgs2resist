@@ -42,9 +42,22 @@ args <- commandArgs(trailingOnly = TRUE)
 name <- args[1]
 pathe <- file.path("results", "models", name, "stats")
 
+met <- data.frame() # Optimal F1 metrics for all models, all graphs
+
+for (model in models) {
+  metrics <- read_tsv(
+    file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
+    col_names = TRUE,
+    show_col_types = FALSE
+  )
+  metrics$model <- model
+  met <- rbind(met, metrics)
+}
+met$fold <- factor(met$Fold + 1)
+
 for (graphtype in list(pr, roc)) {
+  # Accumulate point coordinates for graphtype from separate files
   l <- data.frame()
-  met <- data.frame()
   for (model in models) {
     model_data <- read_tsv(
       file.path(pathe, paste0(model, "_", graphtype[["name"]], ".tsv")),
@@ -54,23 +67,17 @@ for (graphtype in list(pr, roc)) {
 
     model_data$model <- model
     l <- rbind(l, model_data)
-
-    metrics <- read_tsv(
-      file.path(pathe, paste0(model, "_", "crossval_results.tsv")),
-      col_names = TRUE,
-      show_col_types = FALSE
-    )
-    metrics$model <- model
-    met <- rbind(met, metrics)
   }
   l$fold <- factor(l$fold + 1)
-  met$fold <- factor(met$Fold + 1)
 
   met_labels <- met %>%
     mutate(
       auc_score = get(paste0(toupper(graphtype[["name"]]), "_AUC")),
+      tpr = TP / (TP + FN),
+      fpr = FP / (FP + TN),
       label = paste0("AUC: ", sprintf("%.3f", auc_score))
-    )
+    ) %>%
+    select(-auc_score)
 
   plotvar <- ggplot(
     l, aes(
@@ -79,33 +86,54 @@ for (graphtype in list(pr, roc)) {
     )
   ) +
     (if (graphtype[["name"]] == "roc") {
-      geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
-        color = "gray",
-        linetype = "dotted"
+      geom_segment(
+        aes(x = 0, y = 0, xend = 1, yend = 1, linetype = "Baseline"),
+        color = "gray"
       )
     } else {
       NULL
     }) +
     coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
-    geom_line(aes(color = fold)) +
-    geom_point(aes(color = fold)) +
+    geom_line(aes(color = fold), linewidth = 1.2, alpha = 0.5) +
+    geom_point(
+      data = met_labels %>%
+        select(fold, model, fpr, tpr, `Precision@Thresh`, `Recall@Thresh`) %>%
+        mutate(
+          !!tolower(graphtype[["x"]]) :=
+            if (graphtype[["name"]] == "roc") fpr else `Recall@Thresh`,
+          !!tolower(graphtype[["y"]]) :=
+            if (graphtype[["name"]] == "roc") tpr else `Precision@Thresh`
+        ),
+      aes(
+        color = fold
+      ), size = 3,
+      shape = 21,
+      fill = "white",
+      stroke = 1.5,
+    ) +
     geom_smooth(
+      aes(linetype = "Average (polynomial)"),
       method = "lm",
       se = FALSE,
       color = "blue",
-      formula = y ~ poly(x, 3)
+      formula = y ~ poly(x, 4)
+    ) +
+    scale_linetype_manual(
+      name = "",
+      values = c("Baseline" = "dotted", "Average (polynomial)" = "solid"),
     ) +
     geom_text(
       data = met_labels,
       aes(
-        x = 0.95,
-        y = 0.25 - (0.07 * (as.numeric(fold) - 1)),
+        x = 1,
+        y = 0.35 - (0.07 * (as.numeric(fold) - 1)),
         label = label,
         color = fold
       ),
       hjust = 1,
-      size = 3,
-      inherit.aes = FALSE
+      size = 2.5,
+      inherit.aes = FALSE,
+      show.legend = FALSE
     ) +
     facet_wrap(~model, ncol = 2) +
     labs(
@@ -114,15 +142,31 @@ for (graphtype in list(pr, roc)) {
       title = paste0(name, " ", toupper(graphtype[["name"]]))
     ) +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.box = "vertical",
+      legend.position = c(0.85, 0.05),
+      legend.justification = c(1, 0),
+    ) +
+    guides(
+      color = guide_legend(
+        nrow = 1,
+        title = "Fold",
+        order = 1
+      ),
+      linetype = guide_legend(
+        nrow = 1,
+        title = "Reference",
+        order = 2
+      )
+    )
 
   ggsave(
     plot = plotvar,
     filename = file.path(
       pathe, "figs", paste0(name, "_", graphtype[["name"]], ".png")
     ),
-    width = 8,
-    height = 6,
+    width = 10.4,
+    height = 8,
     dpi = 300,
     bg = "white",
     create.dir = TRUE
