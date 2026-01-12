@@ -185,12 +185,12 @@ for (prop in props) {
     cellwidth = 20,
     cellheight = 20,
     angle_col = 45,
-    color = if (prop == "best_thresh") {
-      colorRampPalette(c("blue", "white", "red3"))(100)
+    color = colorRampPalette(c("red3", "white", "blue"))(100),
+    breaks = if (prop == "best_thresh") {
+      seq(0, 1, length.out = 101)
     } else {
-      colorRampPalette(c("red3", "gold", "forestgreen"))(100)
+      seq(0.4, 1, length.out = 101)
     },
-    breaks = seq(0, 1, length.out = 101),
     filename = file.path("results", "models", paste0(prop, "_summary.png"))
   )
 
