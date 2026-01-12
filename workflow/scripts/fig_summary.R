@@ -33,7 +33,7 @@ folders <- basename(
 
 config <- read_yaml(file.path("config", "config.yaml"))
 models <- unlist(strsplit(config$models, " "))
-models <- c(models, "wec")
+models <- c(models, "wec", "wec_b")
 
 l <- data.frame()
 correctness <- data.frame()
@@ -205,12 +205,12 @@ for (prop in props) {
   }
 }
 
-png(
-  file.path("results", "models", "combined_up_set.png"),
-  width = 20, height = 24, units = "in", res = 300
-)
 n_cols <- 2
 n_rows <- ceiling(length(up_set_plots) / n_cols)
+png(
+  file.path("results", "models", "combined_up_set.png"),
+  width = 10 * n_cols, height = 5 * n_rows, units = "in", res = 300
+)
 
 grid.newpage()
 pushViewport(viewport(layout = grid.layout(n_rows, n_cols)))

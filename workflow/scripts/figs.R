@@ -24,7 +24,7 @@ p_load(
 
 config <- read_yaml(file.path("config", "config.yaml"))
 models <- unlist(strsplit(config$models, " "))
-models <- c(models, "wec")
+models <- c(models, "wec", "wec_b")
 
 pr <- list(
   name = "pr",
