@@ -32,12 +32,28 @@ rule baktadb:
     shell:
         "bakta_db download --output {params.output_dir}"
 
-rule bakta:
+rule snv_annotate:
     input:
         fasta=os.path.join("results", "reference.fa"),
         database=os.path.join("resources", "db", "bakta.db")
     output:
-        gbff=os.path.join("results", "bakta", "reference", "reference.gbff")
+        gbff=os.path.join("results", "bakta", "reference", "reference.gbff"),
+        tsv=os.path.join("results", "bakta", "reference", "reference.tsv")
+    threads: workflow.cores
+    conda:
+        os.path.join(env_dir, "bakta.yaml")
+    params:
+        out_dir = subpath(output.gbff, parent=True),
+        db_dir = subpath(input.database, parent=True)
+    shell:
+        "bakta {input.fasta} --output {params.out_dir} --db {params.db_dir} --threads {threads} --force"
+
+rule gpa_annotate:
+    input:
+        pangenome=pan_ref,
+        database=os.path.join("resources", "db", "bakta.db")
+    output:
+        tsv = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv")
     threads: workflow.cores
     conda:
         os.path.join(env_dir, "bakta.yaml")
@@ -46,7 +62,6 @@ rule bakta:
         db_dir = subpath(input.database, parent=True)
     shell:
         "bakta {input.fasta} --output {params.gbff_dir} --db {params.db_dir} --threads {threads} --force"
-    
 
 rule snippy:
     input:

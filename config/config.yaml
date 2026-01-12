@@ -1,5 +1,5 @@
 suscept_table: "input/susceptibility.tsv"
-gpam_table: "../../home/Achromo/other_snakes/Thousand/snake_out/panaroo/gene_presence_absence.Rtab"
+panaroo_dir: "../../home/Achromo/other_snakes/Thousand/snake_out/panaroo"
 models: "gaussian svm logistic xgboost"
 
 metadata: "input/metadata.tsv"

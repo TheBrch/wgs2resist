@@ -4,7 +4,8 @@ configfile: os.path.join("config", "config.yaml")
 
 env_dir = os.path.join("..", "envs")
 suscept = config["suscept_table"]
-gpam = config["gpam_table"]
+gpam = os.path.join(config["gpam_table"], "gene_presence_absence.Rtab")
+pan_ref = os.path.join(config["gpam_table"], "pan_genome_reference.fa")
 metadata = config["metadata"]
 assembly_dir = config["assembly_dir"]
 models = config["models"].split()
