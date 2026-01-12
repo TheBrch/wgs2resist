@@ -33,7 +33,7 @@ folders <- basename(
 
 config <- read_yaml(file.path("config", "config.yaml"))
 models <- unlist(strsplit(config$models, " "))
-models <- c(models, "wec", "wec_b")
+models <- c(models, "wec")
 
 l <- data.frame()
 correctness <- data.frame()

@@ -31,28 +31,9 @@ from imblearn.over_sampling import SMOTE
 
 
 class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, estimators, fitted_estimators, balanced_estimators=False):
+    def __init__(self, estimators, fitted_estimators):
         self.estimators = estimators
         self.fitted_estimators = fitted_estimators
-        self.balanced_estimators = balanced_estimators
-
-    def norm_proba_f1(self, y, prb):
-        if self.balanced_estimators:
-            return prb
-        precision, recall, pr_thresholds = precision_recall_curve(y, prb)
-        pr_thresholds = np.append(pr_thresholds, min(prb) - 1e-6)
-
-        f1_scores = 2 * precision * recall / (precision + recall)
-        f1_scores = np.nan_to_num(f1_scores)
-        best_threshold = pr_thresholds[f1_scores.argmax()]
-
-        return self.norm_proba(prb, best_threshold)
-
-    def norm_proba(self, a, t):
-        if self.balanced_estimators:
-            return a
-        a = np.asarray(a)
-        return np.where(a <= t, a / (2 * t), ((a - t) / (2 * (t - 1))) + 0.5)
 
     def fit(self, X=None, y=None, groups=None):
         from scipy.optimize import minimize
@@ -96,8 +77,7 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
                         y_train_fold,
                     )
                 oof_proba[test_idx] = fold_estimator.predict_proba(X_test_fold)[:, 1]
-
-            probas.append(self.norm_proba_f1(y, oof_proba))
+            probas.append(oof_proba)
         probas = np.column_stack(probas)
 
         def objective(w):
@@ -124,8 +104,8 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
         X = check_array(X)
 
         probas = []
-        for name, estimator, threshold in self.estimators_:
-            probas.append(self.norm_proba(estimator.predict_proba(X)[:, 1], threshold))
+        for name, estimator in self.estimators_:
+            probas.append(estimator.predict_proba(X)[:, 1])
 
         pos_probas = sum(w * p for w, p in zip(self.weights_, probas))
 
@@ -164,7 +144,7 @@ with open(os.path.join("config", "config.yaml"), "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 config_models = config["models"].split(" ")
-models = [*config_models, "wec", "wec_b"]
+models = [*config_models, "wec"]
 
 X_bin = pd.read_pickle(X_bin_file)
 sample_ids = X_bin.pop("rownames")
@@ -214,13 +194,6 @@ def define_model(name):
             return WeightedEnsembleClassifier(
                 estimators=[(e, define_model(e)) for e in config_models],
                 fitted_estimators=fit_models,
-                balanced_estimators=False,
-            )
-        case "wec_b":
-            return WeightedEnsembleClassifier(
-                estimators=[(e, define_model(e)) for e in config_models],
-                fitted_estimators=fit_models,
-                balanced_estimators=True,
             )
         case _:
             logging.error("Unknown model name")
@@ -265,11 +238,13 @@ if splitcount > 1:
 
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
-            elif name == "wec" or name == "wec_b":
+            elif name == "wec":
                 model.fit(X_pre_train, y_pre_train, train_patients)
             else:
                 model.fit(X_train, y_train)
             logging.info(f"Model fitted.")
+
+            fit_models.append((name, model))
 
             if hasattr(model, "coef_"):
                 coef = model.coef_
@@ -294,8 +269,6 @@ if splitcount > 1:
             f1_scores = np.nan_to_num(f1_scores)
 
             best_threshold = pr_thresholds[f1_scores.argmax()]
-
-            fit_models.append((name, model, best_threshold))
 
             roc_df = pd.DataFrame(
                 {
