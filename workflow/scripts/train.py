@@ -107,10 +107,12 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
         for name, estimator in self.estimators_:
             probas.append(estimator.predict_proba(X)[:, 1])
 
-        return sum(w * p for w, p in zip(self.weights_, probas))
+        pos_probas = sum(w * p for w, p in zip(self.weights_, probas))
+
+        return np.column_stack((1 - pos_probas, pos_probas))
 
     def predict(self, X):
-        proba = self.predict_proba(X)
+        proba = self.predict_proba(X)[:, 1]
         return (proba >= 0.5).astype(int)
 
     def score(self, X, y):
