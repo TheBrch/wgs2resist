@@ -39,6 +39,8 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
         from scipy.optimize import minimize
         from sklearn.utils.validation import check_X_y
         from sklearn.model_selection import cross_val_predict
+        from imblearn.pipeline import Pipeline
+        from imblearn.over_sampling import SMOTE
 
         if X is None or y is None:
             raise ValueError("X and y are required for setting weights")
@@ -48,13 +50,17 @@ class WeightedEnsembleClassifier(BaseEstimator, ClassifierMixin):
         self.classes_ = np.unique(y)
 
         probas = []
+        cv = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
         for name, estimator in self.estimators:
+            pipe = Pipeline(
+                [("smote", SMOTE(random_state=42)), ("classifier", estimator)]
+            )
             oof_proba = cross_val_predict(
-                estimator,
+                pipe,
                 X,
                 y,
                 groups=groups,
-                cv=StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42),
+                cv=cv,
                 method="predict_proba",
             )[:, 1]
             probas.append(oof_proba)
@@ -126,7 +132,7 @@ models = [*config_models, "wec"]
 
 X_bin = pd.read_pickle(X_bin_file)
 sample_ids = X_bin.pop("rownames")
-featurenames = X_bin.columns
+feature_header = X_bin.columns
 
 patients = sample_ids.str.split("_").str[0]
 y = pd.read_pickle(sys.argv[2]).values.ravel()
@@ -170,7 +176,7 @@ def define_model(name):
             return LogisticRegression(C=1.0, solver="liblinear", penalty="l1")
         case "wec":
             return WeightedEnsembleClassifier(
-                estimators=[define_model(e) for e in config_models],
+                estimators=[(e, define_model(e)) for e in config_models],
                 fitted_estimators=fit_models,
             )
         case _:
@@ -217,15 +223,22 @@ if splitcount > 1:
             if name == "xgboost":
                 model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
             elif name == "wec":
-                model.fit(X_train, y_train, train_patients)
+                model.fit(X_pre_train, y_pre_train, train_patients)
             else:
                 model.fit(X_train, y_train)
             logging.info(f"Model fitted.")
 
+            fit_models.append((name, model))
+
             if hasattr(model, "coef_"):
                 coef = model.coef_
+                featurenames = feature_header
             elif hasattr(model, "feature_importances_"):
                 coef = model.feature_importances_
+                featurenames = feature_header
+            elif hasattr(model, "weights_"):
+                coef = model.weights_
+                featurenames = config_models
             else:
                 coef = np.array([False])
 
