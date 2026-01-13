@@ -23,7 +23,7 @@ rule gene_concat:
 
 rule baktadb:
     output:
-        os.path.join("resources", "db", "bakta.db")
+        protected(os.path.join("resources", "db", "bakta.db"))
     conda:
         os.path.join(env_dir, "bakta.yaml")
     threads: 2
@@ -50,7 +50,7 @@ rule snv_annotate:
 
 rule gpa_annotate:
     input:
-        pangenome=pan_ref,
+        fasta=pan_ref,
         database=os.path.join("resources", "db", "bakta.db")
     output:
         tsv = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv")
@@ -58,10 +58,10 @@ rule gpa_annotate:
     conda:
         os.path.join(env_dir, "bakta.yaml")
     params:
-        gbff_dir = subpath(output.gbff, parent=True),
+        out_dir = subpath(output.tsv, parent=True),
         db_dir = subpath(input.database, parent=True)
     shell:
-        "bakta {input.fasta} --output {params.gbff_dir} --db {params.db_dir} --threads {threads} --force"
+        "bakta {input.fasta} --output {params.out_dir} --db {params.db_dir} --threads {threads} --force"
 
 rule snippy:
     input:
@@ -86,7 +86,8 @@ rule non_syn_core:
         script=os.path.join(script_dir, "filtered_snp_core.py")
     output:
         os.path.join("results", "ns-snippy-core", "non-synonymous-core.tsv"),
-        os.path.join("results", "ns-snippy-core", "dn_ds.tsv")
+        os.path.join("results", "ns-snippy-core", "dn_ds.tsv"),
+        os.path.join("results", "ns-snippy-core", "snv-effects.tsv")
     conda:
         os.path.join(env_dir, "custom_py.yaml")
     params:
