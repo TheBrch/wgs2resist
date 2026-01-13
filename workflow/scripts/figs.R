@@ -44,6 +44,7 @@ name <- args[1]
 pan_json <- args[2]
 pan_tsv <- args[3]
 pan_csv <- args[4]
+snv_effects <- args[5]
 name <- "Imipenem"
 pathe <- file.path("results", "models", name, "stats")
 
@@ -297,7 +298,7 @@ annotate_features <- function(l_newscores, pan_seq, pan_tsv, old_gpa_annot) {
   l_snv <- l_gpa_annot_inter2 %>% filter(is.na(Annotation))
 
 
-  snv_eff <- read_tsv("snv-effects.tsv", show_col_types = FALSE) %>%
+  snv_eff <- read_tsv(snv_effects, show_col_types = FALSE) %>%
     filter(!is.na(LOCUS_TAG))
 
 
