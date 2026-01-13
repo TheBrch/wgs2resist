@@ -6,6 +6,7 @@ env_dir = os.path.join("..", "envs")
 suscept = config["suscept_table"]
 gpam = os.path.join(config["panaroo_dir"], "gene_presence_absence.Rtab")
 pan_ref = os.path.join(config["panaroo_dir"], "pan_genome_reference.fa")
+pan_old_annotation = os.path.join(config["panaroo_dir"], "gene_presence_absence.csv")
 metadata = config["metadata"]
 assembly_dir = config["assembly_dir"]
 models = config["models"].split()

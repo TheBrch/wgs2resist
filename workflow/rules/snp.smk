@@ -53,7 +53,8 @@ rule gpa_annotate:
         fasta=pan_ref,
         database=os.path.join("resources", "db", "bakta.db")
     output:
-        tsv = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv")
+        tsv = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv"),
+        json = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.json")
     threads: workflow.cores
     conda:
         os.path.join(env_dir, "bakta.yaml")

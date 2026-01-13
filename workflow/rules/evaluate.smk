@@ -6,14 +6,16 @@ rule figs:
             model=models
         ),
         svn_annot = os.path.join("results", "ns-snippy-core", "snv-effects.tsv"),
-        gpa_annot = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv")
+        gpa_annot = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.tsv"),
+        gpa_json = os.path.join("results", "bakta", "pan_genome_reference", "pan_genome_reference.json"),
+        gpa_old_annot = pan_old_annotation
     output:
         os.path.join("results", "models", "{ab}", "stats", "figs", "{ab}_pr.png")
     conda:
         os.path.join(env_dir, "R.yaml")
     threads: workflow.cores/2
     shell:
-        "Rscript {input.script} {wildcards.ab}"
+        "Rscript {input.script} {wildcards.ab} {input.gpa_json} {input.gpa_annot} {input.gpa_old_annot} {input.svn_annot}"
 
 rule summary_fig:
     input:
