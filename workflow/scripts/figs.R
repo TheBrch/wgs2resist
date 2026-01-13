@@ -19,7 +19,8 @@ p_load(
   forcats,
   ggtext,
   reshape2,
-  ComplexUpset
+  stringr,
+  jsonlite
 )
 
 config <- read_yaml(file.path("config", "config.yaml"))
@@ -40,6 +41,7 @@ roc <- list(
 
 args <- commandArgs(trailingOnly = TRUE)
 name <- args[1]
+name <- "Imipenem"
 pathe <- file.path("results", "models", name, "stats")
 
 met <- data.frame() # Optimal F1 metrics for all models, all graphs
@@ -55,6 +57,8 @@ for (model in models) {
 }
 met$fold <- factor(met$Fold + 1)
 
+model_labels <- setNames(models, seq_along(models))
+
 for (graphtype in list(pr, roc)) {
   # Accumulate point coordinates for graphtype from separate files
   l <- data.frame()
@@ -69,6 +73,7 @@ for (graphtype in list(pr, roc)) {
     l <- rbind(l, model_data)
   }
   l$fold <- factor(l$fold + 1)
+  l$model <- match(l$model, models)
 
   met_labels <- met %>%
     mutate(
@@ -78,6 +83,7 @@ for (graphtype in list(pr, roc)) {
       label = paste0("AUC: ", sprintf("%.3f", auc_score))
     ) %>%
     select(-auc_score)
+  met_labels$model <- match(met_labels$model, models)
 
   plotvar <- ggplot(
     l, aes(
@@ -135,7 +141,7 @@ for (graphtype in list(pr, roc)) {
       inherit.aes = FALSE,
       show.legend = FALSE
     ) +
-    facet_wrap(~model, ncol = 2) +
+    facet_wrap(~model, ncol = 2, labeller = labeller(model = model_labels)) +
     labs(
       x = graphtype[["x"]],
       y = graphtype[["y"]],
@@ -191,66 +197,229 @@ for (model in featuremodels) {
   }
 }
 
-# filter out features that appear only once
-features_in_multiple_folds <- l %>%
-  filter(value != 0) %>%
-  distinct(feature, model, fold) %>%
-  count(feature, model) %>%
-  filter(n > 1) %>%
-  pull(feature)
+l_newscores <- l %>%
+  filter(abs(value) > 0) %>%
+  group_by(model, feature) %>%
+  summarise(
+    avg = mean(value),
+    n_folds = n(),
+    score = avg * n_folds
+  ) %>%
+  ungroup()
 
-# filter by selected feature names
-l <- l %>%
-  filter(feature %in% features_in_multiple_folds)
+# Bakta file: contig -> panaroo id
+pan_seq <- fromJSON("pan_genome_reference.json")$sequences %>%
+  select(simple_id, orig_id)
 
-# sort the features by normalized values, limit the number to 10%
-feature_order <- l %>%
+# Bakta file: contig -> annotation
+pan_tsv <- read_tsv(
+  "pan_genome_reference.tsv",
+  show_col_types = FALSE, comment = "# "
+)
+
+# Joining: panaroo id -> annotation
+pan_tsv_original <- pan_tsv %>%
+  left_join(pan_seq, join_by(`#Sequence Id` == simple_id))
+
+# Annotating part of gpa
+l_gpa_annot_inter <- l_newscores %>%
+  left_join(pan_tsv_original, join_by(feature == orig_id)) %>%
+  mutate(
+    Gene = if_else(
+      (!is.na(Type) & Type != "cds"),
+      if_else(
+        !is.na(`Locus Tag`),
+        `Locus Tag`,
+        feature
+      ),
+      Gene
+    )
+  )
+
+# l_gpa_annot_inter[
+#   duplicated(l_gpa_annot_inter[c("model", "feature")]) |
+#     duplicated(l_gpa_annot_inter[c("model", "feature")], fromLast = TRUE),
+# ]
+
+gpa_new_annot <- l_gpa_annot_inter %>%
+  filter(!is.na(`#Sequence Id`)) %>%
+  select(-DbXrefs, -`#Sequence Id`, -Type, -Start, -Stop, -Strand)
+
+# Old annotations
+# Panaroo file:
+old_gpa_annot <- read_csv("gene_presence_absence.csv") %>%
+  select(Gene, `Non-unique Gene name`, Annotation)
+l_gpa_annot_inter2 <- l_gpa_annot_inter %>%
+  filter(is.na(`#Sequence Id`)) %>%
+  left_join(old_gpa_annot, join_by(feature == Gene))
+
+
+gpa_old_annot <- l_gpa_annot_inter2 %>%
+  filter(!is.na(Annotation)) %>%
+  select(where(~ !all(is.na(.)))) %>%
+  rename(
+    Gene = `Non-unique Gene name`,
+    Product = Annotation
+  ) %>%
+  mutate(
+    Gene = gsub("^;+|;+$", "", Gene)
+  )
+
+annotated_gpa <- gpa_new_annot %>%
+  bind_rows(gpa_old_annot) %>%
+  mutate(
+    Effect = "presence",
+    Final_name = if_else(
+      !is.na(Gene),
+      Gene,
+      if_else(
+        !grepl("group_", feature),
+        feature,
+        if_else(
+          !is.na(`Locus Tag`),
+          `Locus Tag`,
+          feature
+        )
+      )
+    )
+  ) %>%
+  select(-`Locus Tag`, -Gene)
+
+
+l_snv <- l_gpa_annot_inter2 %>% filter(is.na(Annotation))
+
+
+
+snv_eff <- read_tsv("snv-effects.tsv", show_col_types = FALSE) %>%
+  filter(!is.na(LOCUS_TAG))
+
+
+l_snv_split <- l_snv %>%
+  select(where(~ !all(is.na(.)))) %>%
+  mutate(
+    snv_locus = str_split_i(feature, "-", 1),
+    snv_pos_alt = str_split_i(feature, "-", 2),
+    snv_pos = as.double(str_split_i(snv_pos_alt, "_", 1)),
+    snv_alt = str_split_i(snv_pos_alt, "_", 2)
+  ) %>%
+  select(-snv_pos_alt)
+
+l_snv_annot <- l_snv_split %>%
+  left_join(
+    snv_eff, join_by(
+      snv_locus == LOCUS_TAG,
+      snv_pos == POS,
+      snv_alt == ALT
+    )
+  ) %>%
+  rename(
+    Product = PRODUCT,
+    Gene = GENE,
+    Effect = EFFECT
+  ) %>%
+  select(-REF) %>%
+  mutate(
+    Effect = str_split_i(str_split_i(Effect, "&", 1), " ", 1)
+  )
+
+l_snv_v_annot <- l_snv_annot %>% filter(!is.na(Effect))
+
+l_snv_wt_annot <- l_snv_annot %>%
+  filter(is.na(Effect)) %>%
+  select(where(~ !all(is.na(.)))) %>%
+  left_join(
+    snv_eff, join_by(
+      snv_locus == LOCUS_TAG,
+      snv_pos == POS,
+      snv_alt == REF
+    )
+  ) %>%
+  select(-ALT, -EFFECT) %>%
+  rename(
+    Product = PRODUCT,
+    Gene = GENE
+  ) %>%
+  mutate(
+    Effect = "wild-variant"
+  ) %>%
+  distinct(.keep_all = TRUE)
+
+annotated_snvs <- rbind(l_snv_wt_annot, l_snv_v_annot) %>%
+  mutate(
+    Final_name = if_else(
+      !is.na(Gene),
+      Gene,
+      snv_locus,
+    )
+  ) %>%
+  select(
+    -snv_locus, -snv_pos, -snv_alt, -Gene
+  )
+
+
+annotated_scored_features <- rbind(annotated_gpa, annotated_snvs) %>% mutate(
+  abs_score = abs(score)
+)
+
+annotated_ranked_features <- annotated_scored_features %>%
+  # filter(!grepl("hypothetical", Final_name)) %>%
   group_by(model) %>%
-  mutate(norm_value = value / max(abs(value), na.rm = TRUE)) %>%
-  group_by(feature, model) %>%
-  summarise(max_abs = max(abs(norm_value)), .groups = "keep") %>%
+  mutate(rating = rank(-abs_score, ties.method = "first")) %>%
+  ungroup()
+
+
+plot_data <- annotated_ranked_features %>%
+  filter(rating <= 50) %>%
+  group_by(Final_name) %>%
+  mutate(InBoth = ifelse(n_distinct(model) > 1, 1, 0)) %>%
+  ungroup() %>%
   group_by(model) %>%
-  slice_max(order_by = max_abs, prop = 0.1, with_ties = FALSE) %>%
-  group_by(feature) %>%
-  summarise(max_abs = max(max_abs), number = n(), .groups = "keep")
+  arrange(rating) %>%
+  mutate(
+    # Long_name = Final_name,
+    # Final_name = str_split_i(Final_name, " : ", 1),
+    Final_name_ordered = paste0(Final_name, "___", model),
+    Final_name_ordered = factor(
+      Final_name_ordered,
+      levels = unique(Final_name_ordered)
+    )
+  ) %>%
+  mutate() %>%
+  ungroup()
 
-appears_in_both <- feature_order %>%
-  filter(number > 1) %>%
-  pull(feature)
-
-# fill in the data from the main dataset, remove 0 value entries
-l <- l %>%
-  right_join(feature_order, by = "feature") %>%
-  mutate(feature = fct_reorder(feature, max_abs, .desc = TRUE)) %>%
-  filter(value != 0)
+bold_vector <- setNames(
+  ifelse(plot_data$InBoth == 1, "bold", "plain"),
+  plot_data$Final_name_ordered
+)
 
 # plot out
-plotvar <- ggplot(l, aes(x = feature, y = value, fill = fold)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~model, ncol = 2, scales = "free_y") +
+plotvar <- ggplot(
+  plot_data,
+  aes(x = Final_name_ordered, y = score, fill = Effect)
+) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~model, ncol = 2, scales = "free") +
+  scale_x_discrete(labels = function(x) gsub("___.*$", "", x)) +
   labs(
     x = "Feature",
     y = "Value",
     title = paste0(name, " feature importance")
   ) +
   theme_minimal() +
-  scale_x_discrete() +
   theme(
     legend.position = "bottom",
-    axis.text.x = element_text(
-      angle = 45,
-      vjust = 1,
-      hjust = 1,
-      colour = ifelse(l$feature %in% appears_in_both, "red", "black"),
-      face = ifelse(l$feature %in% appears_in_both, "bold", "plain")
+    axis.text.y = element_text(
+      face = bold_vector[levels(plot_data$Final_name_ordered)]
     )
-  )
+  ) +
+  coord_flip()
+
 # export to file
 ggsave(
   plot = plotvar,
   filename = file.path(pathe, "figs", paste0(name, "_feature_importance.png")),
-  width = 11,
-  height = 6,
+  width = 7,
+  height = 11,
   dpi = 300,
   bg = "white",
   create.dir = TRUE
