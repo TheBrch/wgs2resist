@@ -8,15 +8,12 @@ p_load(
   arrow,
   readr,
   dplyr,
-  tibble,
-  yaml
+  tibble
 )
-
-config <- read_yaml(file.path("config", "config.yaml"))
-gpam <- config$gpam_table
 
 args <- commandArgs(trailingOnly = TRUE)
 file <- args[1]
+gpam <- args[2]
 bin_data <- read_feather(file)
 
 gpam_data <- read_tsv(gpam, col_names = TRUE, show_col_types = FALSE) %>%

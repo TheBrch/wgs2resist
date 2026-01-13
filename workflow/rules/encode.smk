@@ -37,4 +37,4 @@ rule join:
     conda:
         os.path.join(env_dir, "R.yaml")
     shell:
-        "Rscript {input.script} {input.table}"
+        "Rscript {input.script} {input.table} {input.gpa}"
