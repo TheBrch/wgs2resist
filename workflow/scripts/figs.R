@@ -41,6 +41,9 @@ roc <- list(
 
 args <- commandArgs(trailingOnly = TRUE)
 name <- args[1]
+pan_json <- args[2]
+pan_tsv <- args[3]
+pan_csv <- args[4]
 name <- "Imipenem"
 pathe <- file.path("results", "models", name, "stats")
 
@@ -197,6 +200,7 @@ for (model in featuremodels) {
   }
 }
 
+
 l_newscores <- l %>%
   filter(abs(value) > 0) %>%
   group_by(model, feature) %>%
@@ -207,159 +211,167 @@ l_newscores <- l %>%
   ) %>%
   ungroup()
 
+
 # Bakta file: contig -> panaroo id
-pan_seq <- fromJSON("pan_genome_reference.json")$sequences %>%
+pan_seq <- fromJSON(pan_json)$sequences %>%
   select(simple_id, orig_id)
 
 # Bakta file: contig -> annotation
 pan_tsv <- read_tsv(
-  "pan_genome_reference.tsv",
+  pan_tsv,
   show_col_types = FALSE, comment = "# "
 )
 
-# Joining: panaroo id -> annotation
-pan_tsv_original <- pan_tsv %>%
-  left_join(pan_seq, join_by(`#Sequence Id` == simple_id))
-
-# Annotating part of gpa
-l_gpa_annot_inter <- l_newscores %>%
-  left_join(pan_tsv_original, join_by(feature == orig_id)) %>%
-  mutate(
-    Gene = if_else(
-      (!is.na(Type) & Type != "cds"),
-      if_else(
-        !is.na(`Locus Tag`),
-        `Locus Tag`,
-        feature
-      ),
-      Gene
-    )
-  )
-
-# l_gpa_annot_inter[
-#   duplicated(l_gpa_annot_inter[c("model", "feature")]) |
-#     duplicated(l_gpa_annot_inter[c("model", "feature")], fromLast = TRUE),
-# ]
-
-gpa_new_annot <- l_gpa_annot_inter %>%
-  filter(!is.na(`#Sequence Id`)) %>%
-  select(-DbXrefs, -`#Sequence Id`, -Type, -Start, -Stop, -Strand)
-
 # Old annotations
 # Panaroo file:
-old_gpa_annot <- read_csv("gene_presence_absence.csv") %>%
+old_gpa_annot <- read_csv(pan_csv) %>%
   select(Gene, `Non-unique Gene name`, Annotation)
-l_gpa_annot_inter2 <- l_gpa_annot_inter %>%
-  filter(is.na(`#Sequence Id`)) %>%
-  left_join(old_gpa_annot, join_by(feature == Gene))
 
+annotate_features <- function(l_newscores, pan_seq, pan_tsv, old_gpa_annot) {
+  # Joining: panaroo id -> annotation
+  pan_tsv_original <- pan_tsv %>%
+    left_join(pan_seq, join_by(`#Sequence Id` == simple_id))
 
-gpa_old_annot <- l_gpa_annot_inter2 %>%
-  filter(!is.na(Annotation)) %>%
-  select(where(~ !all(is.na(.)))) %>%
-  rename(
-    Gene = `Non-unique Gene name`,
-    Product = Annotation
-  ) %>%
-  mutate(
-    Gene = gsub("^;+|;+$", "", Gene)
-  )
-
-annotated_gpa <- gpa_new_annot %>%
-  bind_rows(gpa_old_annot) %>%
-  mutate(
-    Effect = "presence",
-    Final_name = if_else(
-      !is.na(Gene),
-      Gene,
-      if_else(
-        !grepl("group_", feature),
-        feature,
+  # Annotating part of gpa
+  l_gpa_annot_inter <- l_newscores %>%
+    left_join(pan_tsv_original, join_by(feature == orig_id)) %>%
+    mutate(
+      Gene = if_else(
+        (!is.na(Type) & Type != "cds"),
         if_else(
           !is.na(`Locus Tag`),
           `Locus Tag`,
           feature
-        )
+        ),
+        Gene
       )
     )
-  ) %>%
-  select(-`Locus Tag`, -Gene)
+
+  # l_gpa_annot_inter[
+  #   duplicated(l_gpa_annot_inter[c("model", "feature")]) |
+  #     duplicated(l_gpa_annot_inter[c("model", "feature")], fromLast = TRUE),
+  # ]
+
+  gpa_new_annot <- l_gpa_annot_inter %>%
+    filter(!is.na(`#Sequence Id`)) %>%
+    select(-DbXrefs, -`#Sequence Id`, -Type, -Start, -Stop, -Strand)
 
 
-l_snv <- l_gpa_annot_inter2 %>% filter(is.na(Annotation))
+  l_gpa_annot_inter2 <- l_gpa_annot_inter %>%
+    filter(is.na(`#Sequence Id`)) %>%
+    left_join(old_gpa_annot, join_by(feature == Gene))
 
 
-
-snv_eff <- read_tsv("snv-effects.tsv", show_col_types = FALSE) %>%
-  filter(!is.na(LOCUS_TAG))
-
-
-l_snv_split <- l_snv %>%
-  select(where(~ !all(is.na(.)))) %>%
-  mutate(
-    snv_locus = str_split_i(feature, "-", 1),
-    snv_pos_alt = str_split_i(feature, "-", 2),
-    snv_pos = as.double(str_split_i(snv_pos_alt, "_", 1)),
-    snv_alt = str_split_i(snv_pos_alt, "_", 2)
-  ) %>%
-  select(-snv_pos_alt)
-
-l_snv_annot <- l_snv_split %>%
-  left_join(
-    snv_eff, join_by(
-      snv_locus == LOCUS_TAG,
-      snv_pos == POS,
-      snv_alt == ALT
+  gpa_old_annot <- l_gpa_annot_inter2 %>%
+    filter(!is.na(Annotation)) %>%
+    select(where(~ !all(is.na(.)))) %>%
+    rename(
+      Gene = `Non-unique Gene name`,
+      Product = Annotation
+    ) %>%
+    mutate(
+      Gene = gsub("^;+|;+$", "", Gene)
     )
-  ) %>%
-  rename(
-    Product = PRODUCT,
-    Gene = GENE,
-    Effect = EFFECT
-  ) %>%
-  select(-REF) %>%
-  mutate(
-    Effect = str_split_i(str_split_i(Effect, "&", 1), " ", 1)
-  )
 
-l_snv_v_annot <- l_snv_annot %>% filter(!is.na(Effect))
+  annotated_gpa <- gpa_new_annot %>%
+    bind_rows(gpa_old_annot) %>%
+    mutate(
+      Effect = "presence",
+      Final_name = if_else(
+        !is.na(Gene),
+        Gene,
+        if_else(
+          !grepl("group_", feature),
+          feature,
+          if_else(
+            !is.na(`Locus Tag`),
+            `Locus Tag`,
+            feature
+          )
+        )
+      )
+    ) %>%
+    select(-`Locus Tag`, -Gene)
 
-l_snv_wt_annot <- l_snv_annot %>%
-  filter(is.na(Effect)) %>%
-  select(where(~ !all(is.na(.)))) %>%
-  left_join(
-    snv_eff, join_by(
-      snv_locus == LOCUS_TAG,
-      snv_pos == POS,
-      snv_alt == REF
+
+  l_snv <- l_gpa_annot_inter2 %>% filter(is.na(Annotation))
+
+
+  snv_eff <- read_tsv("snv-effects.tsv", show_col_types = FALSE) %>%
+    filter(!is.na(LOCUS_TAG))
+
+
+  l_snv_split <- l_snv %>%
+    select(where(~ !all(is.na(.)))) %>%
+    mutate(
+      snv_locus = str_split_i(feature, "-", 1),
+      snv_pos_alt = str_split_i(feature, "-", 2),
+      snv_pos = as.double(str_split_i(snv_pos_alt, "_", 1)),
+      snv_alt = str_split_i(snv_pos_alt, "_", 2)
+    ) %>%
+    select(-snv_pos_alt)
+
+  l_snv_annot <- l_snv_split %>%
+    left_join(
+      snv_eff, join_by(
+        snv_locus == LOCUS_TAG,
+        snv_pos == POS,
+        snv_alt == ALT
+      )
+    ) %>%
+    rename(
+      Product = PRODUCT,
+      Gene = GENE,
+      Effect = EFFECT
+    ) %>%
+    select(-REF) %>%
+    mutate(
+      Effect = str_split_i(str_split_i(Effect, "&", 1), " ", 1)
     )
-  ) %>%
-  select(-ALT, -EFFECT) %>%
-  rename(
-    Product = PRODUCT,
-    Gene = GENE
-  ) %>%
-  mutate(
-    Effect = "wild-variant"
-  ) %>%
-  distinct(.keep_all = TRUE)
 
-annotated_snvs <- rbind(l_snv_wt_annot, l_snv_v_annot) %>%
-  mutate(
-    Final_name = if_else(
-      !is.na(Gene),
-      Gene,
-      snv_locus,
+  l_snv_v_annot <- l_snv_annot %>% filter(!is.na(Effect))
+
+  l_snv_wt_annot <- l_snv_annot %>%
+    filter(is.na(Effect)) %>%
+    select(where(~ !all(is.na(.)))) %>%
+    left_join(
+      snv_eff, join_by(
+        snv_locus == LOCUS_TAG,
+        snv_pos == POS,
+        snv_alt == REF
+      )
+    ) %>%
+    select(-ALT, -EFFECT) %>%
+    rename(
+      Product = PRODUCT,
+      Gene = GENE
+    ) %>%
+    mutate(
+      Effect = "wild-variant"
+    ) %>%
+    distinct(.keep_all = TRUE)
+
+  annotated_snvs <- rbind(l_snv_wt_annot, l_snv_v_annot) %>%
+    mutate(
+      Final_name = if_else(
+        !is.na(Gene),
+        Gene,
+        snv_locus,
+      )
+    ) %>%
+    select(
+      -snv_locus, -snv_pos, -snv_alt, -Gene
     )
-  ) %>%
-  select(
-    -snv_locus, -snv_pos, -snv_alt, -Gene
-  )
 
 
-annotated_scored_features <- rbind(annotated_gpa, annotated_snvs) %>% mutate(
-  abs_score = abs(score)
-)
+  annotated_scored_features <- rbind(annotated_gpa, annotated_snvs)
+
+  return(annotated_scored_features)
+}
+
+annotated_scored_features <-
+  annotate_features(l_newscores, pan_seq, pan_tsv, old_gpa_annot) %>%
+  mutate(abs_score = abs(score))
 
 annotated_ranked_features <- annotated_scored_features %>%
   # filter(!grepl("hypothetical", Final_name)) %>%
@@ -367,37 +379,33 @@ annotated_ranked_features <- annotated_scored_features %>%
   mutate(rating = rank(-abs_score, ties.method = "first")) %>%
   ungroup()
 
-
 plot_data <- annotated_ranked_features %>%
   filter(rating <= 50) %>%
   group_by(Final_name) %>%
-  mutate(InBoth = ifelse(n_distinct(model) > 1, 1, 0)) %>%
+  mutate(InBoth = as.integer(n_distinct(model) > 1)) %>%
   ungroup() %>%
   group_by(model) %>%
   arrange(rating) %>%
   mutate(
-    # Long_name = Final_name,
-    # Final_name = str_split_i(Final_name, " : ", 1),
     Final_name_ordered = paste0(Final_name, "___", model),
-    Final_name_ordered = factor(
-      Final_name_ordered,
-      levels = unique(Final_name_ordered)
-    )
+    Final_name_ordered = factor(Final_name_ordered, levels = unique(Final_name_ordered)),
+    # Create the border variables in the data
+    bar_color = ifelse(InBoth == 1, "black", NA),
+    bar_linewidth = ifelse(InBoth == 1, 1, 0)
   ) %>%
-  mutate() %>%
   ungroup()
 
-bold_vector <- setNames(
-  ifelse(plot_data$InBoth == 1, "bold", "plain"),
-  plot_data$Final_name_ordered
-)
-
-# plot out
+# Create plot
 plotvar <- ggplot(
   plot_data,
   aes(x = Final_name_ordered, y = score, fill = Effect)
 ) +
-  geom_bar(stat = "identity") +
+  geom_bar(
+    stat = "identity",
+    aes(color = bar_color),
+    linewidth = 1
+  ) +
+  scale_color_identity() +
   facet_wrap(~model, ncol = 2, scales = "free") +
   scale_x_discrete(labels = function(x) gsub("___.*$", "", x)) +
   labs(
@@ -407,13 +415,9 @@ plotvar <- ggplot(
   ) +
   theme_minimal() +
   theme(
-    legend.position = "bottom",
-    axis.text.y = element_text(
-      face = bold_vector[levels(plot_data$Final_name_ordered)]
-    )
+    legend.position = "bottom"
   ) +
   coord_flip()
-
 # export to file
 ggsave(
   plot = plotvar,
