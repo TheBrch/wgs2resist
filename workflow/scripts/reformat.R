@@ -46,9 +46,9 @@ sus_data <- sus_data[, valid]
 print(colSums(!is.na(sus_data)))
 
 snv_data <- read_tsv(snvs, col_names = TRUE, show_col_types = FALSE) %>%
-  mutate(combined = paste(CHR, POS, sep = "-")) %>%
+  mutate(combined = paste(LOCUS_TAG, POS, sep = "-")) %>%
   column_to_rownames("combined") %>%
-  select(-CHR, -POS, -REF) %>%
+  select(-LOCUS_TAG, -POS, -REF) %>%
   t() %>%
   as.data.frame() %>%
   rownames_to_column("rownames")

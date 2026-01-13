@@ -11,6 +11,7 @@ parser.add_argument("--outdir", "-o", help="Output directory")
 args = parser.parse_args()
 
 tables = []
+effects = []
 dn_ds_set = []
 annotations = pd.DataFrame()
 
@@ -39,9 +40,14 @@ for f in args.samples:
     snd.loc[mask, "POS"] = snd.loc[mask, "POS"] + 1
     snd.loc[mask, "ALT"] = "-"
 
-    simplified = snd.assign(
-        CHR=snd.CHROM, SAMPLE=sample, SYN=snd.EFFECT.str.contains("synonymous_variant")
-    )[["SAMPLE", "CHR", "POS", "REF", "ALT", "LOCUS_TAG"]]
+    simplified = snd.assign(CHR=snd.CHROM, SAMPLE=sample)[
+        ["SAMPLE", "CHR", "POS", "REF", "ALT", "LOCUS_TAG"]
+    ]
+
+    effect_info = snd[
+        ["LOCUS_TAG", "POS", "REF", "ALT", "EFFECT", "GENE", "PRODUCT"]
+    ].copy()
+    effects.append(effect_info)
     tables.append(simplified)
 
 
@@ -73,22 +79,33 @@ filtered_collection = collection.merge(
 )
 
 wide_output = filtered_collection.pivot_table(
-    index=["CHR", "POS", "REF"], columns="SAMPLE", values="ALT", aggfunc="first"
+    index=["LOCUS_TAG", "POS", "REF"],
+    columns="SAMPLE",
+    values="ALT",
+    aggfunc="first",
 ).reset_index()
 
 
 sample_columns = [
-    col for col in wide_output.columns if col not in ["CHR", "POS", "REF"]
+    col for col in wide_output.columns if col not in ["LOCUS_TAG", "POS", "REF"]
 ]
 
 for col in sample_columns:
     wide_output[col] = wide_output[col].fillna(wide_output["REF"])
 
 wide_output = wide_output.sort_values(
-    by=["CHR", "POS"], key=natsort_keygen()
+    by=["LOCUS_TAG", "POS"], key=natsort_keygen()
 ).reset_index(drop=True)
 
 
 wide_output.to_csv(
     os.path.join(args.outdir, "non-synonymous-core.tsv"), sep="\t", index=False
 )
+
+effects = (
+    pd.concat(effects, ignore_index=True)
+    .drop_duplicates(["LOCUS_TAG", "POS", "ALT"])
+    .sort_values(by=["LOCUS_TAG", "POS", "ALT"], key=natsort_keygen())
+    .reset_index(drop=True)
+)
+effects.to_csv(os.path.join(args.outdir, "snv-effects.tsv"), sep="\t", index=False)
