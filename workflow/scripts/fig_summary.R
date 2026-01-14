@@ -160,7 +160,7 @@ heatmap_plots <- list()
 for (prop in props) {
   matrix <- dcast(l, ab ~ model, value.var = prop) %>%
     column_to_rownames("ab")
-  col_order <- colnames(matrix)
+  col_order <- models
   row_order <- rownames(matrix)
   if ("Average" %in% row_order) {
     other_rows <- row_order[row_order != "Average"]
