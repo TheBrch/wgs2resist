@@ -21,3 +21,5 @@ dependencies:
   - r-forcats
   - r-gridextra
   - r-complexupset
+  - r-stringr
+  - r-jsonlite
