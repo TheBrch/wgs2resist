@@ -90,7 +90,7 @@ for (name in folders) {
           aes(label = after_stat(count)),
           hjust = -0.2, stat = "count"
         ) +
-        scale_fill_hue() +
+        scale_fill_brewer(palette = "Set2") +
         guides(fill = "none") +
         ylab("Correct predictions")
     ),
@@ -135,7 +135,7 @@ up_set_overall <- upset(
         aes(label = after_stat(count)),
         hjust = -0.2, stat = "count"
       ) +
-      scale_fill_hue() +
+      scale_fill_brewer(palette = "Set2") +
       guides(fill = "none") +
       ylab("Correct predictions")
   ),
