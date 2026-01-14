@@ -1,6 +1,6 @@
 suscept_table: "input/susceptibility.tsv"
 panaroo_dir: "../../home/Achromo/other_snakes/Thousand/snake_out/panaroo"
-models: "gaussian svm logistic xgboost"
+models: "logistic svm gaussian xgboost"
 
 metadata: "input/metadata.tsv"
 assembly_dir: "input/assemblies"
