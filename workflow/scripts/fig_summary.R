@@ -70,7 +70,7 @@ for (name in folders) {
   correctness <- rbind(correctness, ab_correctness)
   up_set <- upset(
     ab_correctness,
-    intersect = sort(colnames(ab_correctness)),
+    intersect = rev(models),
     sort_sets = FALSE,
     name = "ML models",
     base_annotations = list(
@@ -104,7 +104,7 @@ for (name in folders) {
 }
 up_set_overall <- upset(
   correctness,
-  intersect = sort(colnames(correctness)),
+  intersect = rev(models),
   sort_sets = FALSE,
   name = "ML models",
   base_annotations = list(
