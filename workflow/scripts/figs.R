@@ -40,12 +40,12 @@ roc <- list(
 )
 
 args <- commandArgs(trailingOnly = TRUE)
+
 name <- args[1]
 pan_json <- args[2]
 pan_tsv <- args[3]
 pan_csv <- args[4]
 snv_effects <- args[5]
-name <- "Imipenem"
 pathe <- file.path("results", "models", name, "stats")
 
 met <- data.frame() # Optimal F1 metrics for all models, all graphs
@@ -225,10 +225,17 @@ pan_tsv <- read_tsv(
 
 # Old annotations
 # Panaroo file:
-old_gpa_annot <- read_csv(pan_csv) %>%
+old_gpa_annot <- read_csv(pan_csv, show_col_types = FALSE) %>%
   select(Gene, `Non-unique Gene name`, Annotation)
 
-annotate_features <- function(l_newscores, pan_seq, pan_tsv, old_gpa_annot) {
+
+# SNV effects
+snv_eff <- read_tsv(snv_effects, show_col_types = FALSE) %>%
+  filter(!is.na(LOCUS_TAG))
+
+annotate_features <- function(
+  l_newscores, pan_seq, pan_tsv, old_gpa_annot, snv_eff
+) {
   # Joining: panaroo id -> annotation
   pan_tsv_original <- pan_tsv %>%
     left_join(pan_seq, join_by(`#Sequence Id` == simple_id))
@@ -296,10 +303,6 @@ annotate_features <- function(l_newscores, pan_seq, pan_tsv, old_gpa_annot) {
 
 
   l_snv <- l_gpa_annot_inter2 %>% filter(is.na(Annotation))
-
-
-  snv_eff <- read_tsv(snv_effects, show_col_types = FALSE) %>%
-    filter(!is.na(LOCUS_TAG))
 
 
   l_snv_split <- l_snv %>%
@@ -371,7 +374,7 @@ annotate_features <- function(l_newscores, pan_seq, pan_tsv, old_gpa_annot) {
 }
 
 annotated_scored_features <-
-  annotate_features(l_newscores, pan_seq, pan_tsv, old_gpa_annot) %>%
+  annotate_features(l_newscores, pan_seq, pan_tsv, old_gpa_annot, snv_eff) %>%
   mutate(abs_score = abs(score))
 
 annotated_ranked_features <- annotated_scored_features %>%
@@ -389,7 +392,10 @@ plot_data <- annotated_ranked_features %>%
   arrange(rating) %>%
   mutate(
     Final_name_ordered = paste0(Final_name, "___", model),
-    Final_name_ordered = factor(Final_name_ordered, levels = unique(Final_name_ordered)),
+    Final_name_ordered = factor(
+      Final_name_ordered,
+      levels = unique(Final_name_ordered)
+    ),
     # Create the border variables in the data
     bar_color = ifelse(InBoth == 1, "black", NA),
     bar_linewidth = ifelse(InBoth == 1, 1, 0)
@@ -423,31 +429,166 @@ plotvar <- ggplot(
 ggsave(
   plot = plotvar,
   filename = file.path(pathe, "figs", paste0(name, "_feature_importance.png")),
-  width = 7,
+  width = 9,
   height = 11,
   dpi = 300,
   bg = "white",
   create.dir = TRUE
 )
 
-correlation <- read_feather(
-  file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
-) %>%
-  column_to_rownames("index") %>%
-  mutate(across(everything(), ~ round(as.numeric(.), 3)))
+get_feature_correlations <- function(
+  feature_name, corr_df, include_transitive = TRUE
+) {
+  all_features <- character(0)
+  visited <- character(0)
 
-toptops <- correlation[appears_in_both, ] %>%
-  t() %>%
-  as.data.frame()
+  find_correlations <- function(current_feature) {
+    if (current_feature %in% visited) {
+      return()
+    }
+    visited <<- c(visited, current_feature)
+    all_features <<- c(all_features, current_feature)
 
-filtered <- toptops[
-  toptops %>%
-    mutate(
-      has_high = apply(., 1, function(row) any(abs(row) > 0.9, na.rm = TRUE))
+    row_data <- corr_df %>% filter(index == current_feature)
+    if (nrow(row_data) > 0) {
+      correlations <- row_data %>% select(-index)
+      for (col_name in names(correlations)) {
+        if (!is.na(correlations[[col_name]])) {
+          all_features <<- c(all_features, col_name)
+          if (include_transitive) {
+            find_correlations(col_name)
+          }
+        }
+      }
+    }
+
+    # Find reverse correlations (where current_feature is a column)
+    if (current_feature %in% names(corr_df)) {
+      col_data <- corr_df %>%
+        filter(!is.na(.data[[current_feature]])) %>%
+        pull(index)
+
+      all_features <<- c(all_features, col_data)
+      if (include_transitive) {
+        for (feat in col_data) {
+          find_correlations(feat)
+        }
+      }
+    }
+  }
+
+  find_correlations(feature_name)
+  all_features <- unique(all_features)
+
+  cols_to_keep <- c("index", intersect(names(corr_df), all_features))
+
+  result <- corr_df %>%
+    filter(index %in% all_features) %>%
+    select(all_of(cols_to_keep))
+
+  return(result)
+}
+
+get_and_melt <- function(feature_name, corr_df, include_transitive = FALSE) {
+  subset_df <- get_feature_correlations(
+    feature_name, corr_df, include_transitive
+  )
+
+  if (ncol(subset_df) <= 1) {
+    return(tibble(
+      input_feature = character(), feature_i = character(),
+      feature_j = character(), correlation = numeric()
+    ))
+  }
+
+  # Melt to long format
+  melted <- subset_df %>%
+    pivot_longer(
+      cols = -index,
+      names_to = "feature_j",
+      values_to = "correlation"
     ) %>%
-    pull(has_high),
-] %>%
-  t()
+    rename(feature_i = index) %>%
+    filter(!is.na(correlation)) %>%
+    mutate(input_feature = feature_name, .before = 1)
+  # Add input feature as first column
+
+  return(melted)
+}
+
+get_multiple_features_melted <- function(
+  feature_list, corr_df, include_transitive = FALSE
+) {
+  feature_list %>%
+    lapply(function(feat) {
+      tryCatch(
+        get_and_melt(feat, corr_df, include_transitive),
+        error = function(e) {
+          warning(paste("Error processing feature:", feat, "-", e$message))
+          tibble(
+            input_feature = character(), feature_i = character(),
+            feature_j = character(), correlation = numeric()
+          )
+        }
+      )
+    }) %>%
+    bind_rows()
+}
+
+
+correlation_df <- read_feather(
+  file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
+)
+
+melted <- get_multiple_features_melted(
+  unique(annotated_scored_features$feature), correlation_df
+)
+
+standardized_corr <- melted %>%
+  mutate(
+    feature = if_else(
+      feature_i == input_feature,
+      feature_j,
+      feature_i
+    )
+  ) %>%
+  select(
+    -feature_i, -feature_j
+  )
+
+scored_corr <- standardized_corr %>%
+  left_join(
+    annotated_scored_features %>%
+      select(model, feature, n_folds, score),
+    join_by(input_feature == feature)
+  ) %>%
+  mutate(
+    score = if_else(
+      model == "logistic",
+      score * correlation,
+      score * abs(correlation)
+    )
+  )
+
+annot_corr <- annotate_features(
+  scored_corr, pan_seq, pan_tsv, old_gpa_annot, snv_eff
+)
+total_features <- annotated_scored_features %>% bind_rows(annot_corr)
+
+##########################################
+
+# toptops <- correlation[appears_in_both, ] %>%
+#   t() %>%
+#   as.data.frame()
+
+# filtered <- toptops[
+#   toptops %>%
+#     mutate(
+#       has_high = apply(., 1, function(row) any(abs(row) > 0.9, na.rm = TRUE))
+#     ) %>%
+#     pull(has_high),
+# ] %>%
+#   t()
 
 # melted_filtered <- melt(filtered)
 
@@ -478,27 +619,27 @@ filtered <- toptops[
 #   bg = "white",
 #   create.dir = TRUE
 # )
-if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
-  pheatmap(
-    filtered,
-    main = paste0(name, "\ntop feature correlations"),
-    color = colorRampPalette(c("red", "white", "blue"))(100),
-    breaks = seq(-1, 1, length.out = 101),
-    cluster_rows = nrow(filtered) > 2,
-    cluster_cols = ncol(filtered) > 2,
-    display_numbers = TRUE,
-    number_format = "%.2f",
-    fontsize_number = 6,
-    legend = TRUE,
-    fontsize = 9,
-    show_rownames = TRUE,
-    show_colnames = TRUE,
-    angle_col = 45,
-    border_color = NA,
-    width = 4 + (ncol(filtered) * 0.5),
-    height = 2.5 + (nrow(filtered) * 0.5),
-    cellwidth = 20,
-    cellheight = 20,
-    filename = file.path(pathe, "figs", paste0(name, "_corr.png"))
-  )
-}
+# if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
+#   pheatmap(
+#     filtered,
+#     main = paste0(name, "\ntop feature correlations"),
+#     color = colorRampPalette(c("red", "white", "blue"))(100),
+#     breaks = seq(-1, 1, length.out = 101),
+#     cluster_rows = nrow(filtered) > 2,
+#     cluster_cols = ncol(filtered) > 2,
+#     display_numbers = TRUE,
+#     number_format = "%.2f",
+#     fontsize_number = 6,
+#     legend = TRUE,
+#     fontsize = 9,
+#     show_rownames = TRUE,
+#     show_colnames = TRUE,
+#     angle_col = 45,
+#     border_color = NA,
+#     width = 4 + (ncol(filtered) * 0.5),
+#     height = 2.5 + (nrow(filtered) * 0.5),
+#     cellwidth = 20,
+#     cellheight = 20,
+#     filename = file.path(pathe, "figs", paste0(name, "_corr.png"))
+#   )
+# }
