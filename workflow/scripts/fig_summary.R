@@ -160,12 +160,12 @@ heatmap_plots <- list()
 for (prop in props) {
   matrix <- dcast(l, ab ~ model, value.var = prop) %>%
     column_to_rownames("ab")
-
+  col_order <- colnames(matrix)
   row_order <- rownames(matrix)
   if ("Average" %in% row_order) {
     other_rows <- row_order[row_order != "Average"]
     row_order <- c(other_rows, "Average")
-    matrix <- matrix[row_order, ]
+    matrix <- matrix[row_order, col_order]
   }
 
   matrix_width <- 2.3 + (ncol(matrix) * 0.5)
@@ -185,6 +185,8 @@ for (prop in props) {
     cellwidth = 20,
     cellheight = 20,
     angle_col = 45,
+    gaps_row = nrow(matrix) - 1,
+    gaps_col = ncol(matrix) - 1,
     color = colorRampPalette(c("red3", "white", "blue"))(100),
     breaks = if (prop == "best_thresh") {
       seq(0, 1, length.out = 101)
