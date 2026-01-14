@@ -536,44 +536,44 @@ get_multiple_features_melted <- function(
 }
 
 
-correlation_df <- read_feather(
-  file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
-)
+# correlation_df <- read_feather(
+#   file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
+# )
 
-melted <- get_multiple_features_melted(
-  unique(annotated_scored_features$feature), correlation_df
-)
+# melted <- get_multiple_features_melted(
+#   unique(annotated_scored_features$feature), correlation_df
+# )
 
-standardized_corr <- melted %>%
-  mutate(
-    feature = if_else(
-      feature_i == input_feature,
-      feature_j,
-      feature_i
-    )
-  ) %>%
-  select(
-    -feature_i, -feature_j
-  )
+# standardized_corr <- melted %>%
+#   mutate(
+#     feature = if_else(
+#       feature_i == input_feature,
+#       feature_j,
+#       feature_i
+#     )
+#   ) %>%
+#   select(
+#     -feature_i, -feature_j
+#   )
 
-scored_corr <- standardized_corr %>%
-  left_join(
-    annotated_scored_features %>%
-      select(model, feature, n_folds, score),
-    join_by(input_feature == feature)
-  ) %>%
-  mutate(
-    score = if_else(
-      model == "logistic",
-      score * correlation,
-      score * abs(correlation)
-    )
-  )
+# scored_corr <- standardized_corr %>%
+#   left_join(
+#     annotated_scored_features %>%
+#       select(model, feature, n_folds, score),
+#     join_by(input_feature == feature)
+#   ) %>%
+#   mutate(
+#     score = if_else(
+#       model == "logistic",
+#       score * correlation,
+#       score * abs(correlation)
+#     )
+#   )
 
-annot_corr <- annotate_features(
-  scored_corr, pan_seq, pan_tsv, old_gpa_annot, snv_eff
-)
-total_features <- annotated_scored_features %>% bind_rows(annot_corr)
+# annot_corr <- annotate_features(
+#   scored_corr, pan_seq, pan_tsv, old_gpa_annot, snv_eff
+# )
+# total_features <- annotated_scored_features %>% bind_rows(annot_corr)
 
 ##########################################
 
