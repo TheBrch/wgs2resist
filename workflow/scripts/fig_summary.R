@@ -101,6 +101,17 @@ for (name in folders) {
     )
   )
   up_set_plots <- c(up_set_plots, list(up_set))
+  ggsave(
+    plot = up_set,
+    filename = file.path(
+      pathe, "figs", "upset.png"
+    ),
+    width = 11,
+    height = 5,
+    dpi = 300,
+    bg = "white",
+    create.dir = TRUE
+  )
 }
 up_set_overall <- upset(
   correctness,
@@ -135,6 +146,15 @@ up_set_overall <- upset(
   )
 )
 up_set_plots <- c(up_set_plots, list(up_set_overall))
+ggsave(
+  plot = up_set_overall,
+  filename = file.path("results", "models", "overall_upset.png"),
+  width = 11,
+  height = 5,
+  dpi = 300,
+  bg = "white",
+  create.dir = TRUE
+)
 
 average_metrics <- l %>%
   group_by(model) %>%
