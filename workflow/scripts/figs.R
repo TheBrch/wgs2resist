@@ -40,7 +40,6 @@ roc <- list(
 )
 
 args <- commandArgs(trailingOnly = TRUE)
-
 name <- args[1]
 pan_json <- args[2]
 pan_tsv <- args[3]
@@ -269,10 +268,12 @@ annotate_features <- function(
     filter(is.na(`#Sequence Id`)) %>%
     left_join(old_gpa_annot, join_by(feature == Gene))
 
-
   gpa_old_annot <- l_gpa_annot_inter2 %>%
     filter(!is.na(Annotation)) %>%
-    select(where(~ !all(is.na(.)))) %>%
+    select(
+      -Gene, -Product, -DbXrefs, -`#Sequence Id`,
+      -Type, -Start, -Stop, -Strand, -`Locus Tag`
+    ) %>%
     rename(
       Gene = `Non-unique Gene name`,
       Product = Annotation
@@ -306,7 +307,10 @@ annotate_features <- function(
 
 
   l_snv_split <- l_snv %>%
-    select(where(~ !all(is.na(.)))) %>%
+    select(
+      -Gene, -Product, -DbXrefs, -`#Sequence Id`, -Type, -Start,
+      -Stop, -Strand, -`Locus Tag`, -`Non-unique Gene name`, -Annotation
+    ) %>%
     mutate(
       snv_locus = str_split_i(feature, "-", 1),
       snv_pos_alt = str_split_i(feature, "-", 2),
@@ -337,7 +341,7 @@ annotate_features <- function(
 
   l_snv_wt_annot <- l_snv_annot %>%
     filter(is.na(Effect)) %>%
-    select(where(~ !all(is.na(.)))) %>%
+    select(-Effect, -Gene, -Product) %>%
     left_join(
       snv_eff, join_by(
         snv_locus == LOCUS_TAG,
@@ -377,17 +381,42 @@ annotated_scored_features <-
   annotate_features(l_newscores, pan_seq, pan_tsv, old_gpa_annot, snv_eff) %>%
   mutate(abs_score = abs(score))
 
+# annotated_ranked_features <- annotated_scored_features %>%
+#  # filter(!grepl("hypothetical", Final_name)) %>%
+#  group_by(model) %>%
+#  mutate(rating = rank(-abs_score, ties.method = "first")) %>%
+#  ungroup()
+
 annotated_ranked_features <- annotated_scored_features %>%
-  # filter(!grepl("hypothetical", Final_name)) %>%
+  group_by(model, Final_name) %>%
+  summarise(
+    non_presence_mean = if_else(any(Effect != "presence"),
+      mean(abs_score[Effect != "presence"], na.rm = TRUE),
+      0
+    ),
+    presence_mean = if_else(any(Effect == "presence"),
+      mean(abs_score[Effect == "presence"], na.rm = TRUE),
+      0
+    ),
+    abs_score = if_else(any(Effect == "presence"),
+      presence_mean + non_presence_mean,
+      non_presence_mean
+    ),
+    Effect = paste(sort(unique(Effect)), collapse = ";"),
+    Product = paste(sort(unique(Product)), collapse = ";"),
+    .groups = "drop"
+  ) %>%
   group_by(model) %>%
   mutate(rating = rank(-abs_score, ties.method = "first")) %>%
   ungroup()
 
-plot_data <- annotated_ranked_features %>%
+selected_top_features <- annotated_ranked_features %>%
   filter(rating <= 50) %>%
   group_by(Final_name) %>%
   mutate(InBoth = as.integer(n_distinct(model) > 1)) %>%
-  ungroup() %>%
+  ungroup()
+
+plot_data <- selected_top_features %>%
   group_by(model) %>%
   arrange(rating) %>%
   mutate(
@@ -405,7 +434,7 @@ plot_data <- annotated_ranked_features %>%
 # Create plot
 plotvar <- ggplot(
   plot_data,
-  aes(x = Final_name_ordered, y = score, fill = Effect)
+  aes(x = Final_name_ordered, y = abs_score, fill = Effect)
 ) +
   geom_bar(
     stat = "identity",
@@ -536,110 +565,59 @@ get_multiple_features_melted <- function(
 }
 
 
-# correlation_df <- read_feather(
-#   file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
-# )
+correlation_df <- read_feather(
+  file.path("results", "condensed_data", paste0(name, "_hicorr.feather"))
+)
 
-# melted <- get_multiple_features_melted(
-#   unique(annotated_scored_features$feature), correlation_df
-# )
+top_top <- selected_top_features %>% filter(InBoth == 1)
 
-# standardized_corr <- melted %>%
-#   mutate(
-#     feature = if_else(
-#       feature_i == input_feature,
-#       feature_j,
-#       feature_i
-#     )
-#   ) %>%
-#   select(
-#     -feature_i, -feature_j
-#   )
+top_top_features <- top_top %>%
+  group_by(Final_name) %>%
+  summarize() %>%
+  left_join(annotated_scored_features, join_by(Final_name == Final_name))
 
-# scored_corr <- standardized_corr %>%
-#   left_join(
-#     annotated_scored_features %>%
-#       select(model, feature, n_folds, score),
-#     join_by(input_feature == feature)
-#   ) %>%
-#   mutate(
-#     score = if_else(
-#       model == "logistic",
-#       score * correlation,
-#       score * abs(correlation)
-#     )
-#   )
+unique_top_features <- unique(top_top_features$feature)
 
-# annot_corr <- annotate_features(
-#   scored_corr, pan_seq, pan_tsv, old_gpa_annot, snv_eff
-# )
-# total_features <- annotated_scored_features %>% bind_rows(annot_corr)
+melted <- get_multiple_features_melted(
+  unique_top_features, correlation_df
+)
 
-##########################################
+standardized_corr <- melted %>%
+  mutate(
+    feature = if_else(
+      feature_i == input_feature,
+      feature_j,
+      feature_i
+    )
+  ) %>%
+  select(
+    -feature_i, -feature_j
+  )
 
-# toptops <- correlation[appears_in_both, ] %>%
-#   t() %>%
-#   as.data.frame()
+annot_corr <- annotate_features(
+  standardized_corr, pan_seq, pan_tsv, old_gpa_annot, snv_eff
+)
 
-# filtered <- toptops[
-#   toptops %>%
-#     mutate(
-#       has_high = apply(., 1, function(row) any(abs(row) > 0.9, na.rm = TRUE))
-#     ) %>%
-#     pull(has_high),
-# ] %>%
-#   t()
+minimized_annotated_features <- annotated_scored_features %>%
+  group_by(feature, Effect, Product, Final_name) %>%
+  summarize()
 
-# melted_filtered <- melt(filtered)
+chosen_annotated_features <- annot_corr %>%
+  select(input_feature) %>%
+  left_join(minimized_annotated_features, join_by(input_feature == feature))
 
-# heatmap_plot <- ggplot(melted_filtered, aes(x=Var1, y=Var2, fill=value)) +
-#   geom_tile() +
-#   scale_fill_gradient2(
-#     low = "red",
-#     mid = "white",
-#     high = "blue",
-#     midpoint = 0,
-#     limits = c(-1, 1)
-#   ) +
-#   theme_minimal() +
-#   theme(
-#     axis.text.x = element_text(angle = 45, hjust = 1),
-#     panel.grid = element_blank(),
-#     panel.border = element_blank(),
-#     axis.title = element_blank()
-#   ) +
-#   labs(fill = "Value")
+total_features <- chosen_annotated_features %>% bind_rows(annot_corr)
 
-# ggsave(
-#   plot = heatmap_plot,
-#   filename = paste0(pathe, "/figs/", name, "_corr.png"),
-#   width = 15,
-#   height = 15,
-#   dpi = 300,
-#   bg = "white",
-#   create.dir = TRUE
-# )
-# if (!is.null(filtered) && nrow(filtered) > 0 && ncol(filtered) > 0) {
-#   pheatmap(
-#     filtered,
-#     main = paste0(name, "\ntop feature correlations"),
-#     color = colorRampPalette(c("red", "white", "blue"))(100),
-#     breaks = seq(-1, 1, length.out = 101),
-#     cluster_rows = nrow(filtered) > 2,
-#     cluster_cols = ncol(filtered) > 2,
-#     display_numbers = TRUE,
-#     number_format = "%.2f",
-#     fontsize_number = 6,
-#     legend = TRUE,
-#     fontsize = 9,
-#     show_rownames = TRUE,
-#     show_colnames = TRUE,
-#     angle_col = 45,
-#     border_color = NA,
-#     width = 4 + (ncol(filtered) * 0.5),
-#     height = 2.5 + (nrow(filtered) * 0.5),
-#     cellwidth = 20,
-#     cellheight = 20,
-#     filename = file.path(pathe, "figs", paste0(name, "_corr.png"))
-#   )
-# }
+total_features_collapsed <- total_features %>%
+  group_by(Final_name) %>%
+  summarise(
+    Effect = paste(sort(unique(Effect)), collapse = ";"),
+    Product = paste(sort(unique(Product)), collapse = ";"),
+    .groups = "drop"
+  )
+
+write_delim(
+  total_features_collapsed,
+  file.path(pathe, "top_features.tsv"),
+  delim = "\t"
+)
