@@ -47,7 +47,7 @@ for (name in folders) {
       show_col_types = FALSE
     )
     metrics$model <- model
-    metrics$ab <- gsub("_", " ", name)
+    metrics$ab <- gsub("_", "/", name)
 
     m <- metrics %>%
       group_by(model, ab) %>%
