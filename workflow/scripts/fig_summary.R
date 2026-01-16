@@ -21,7 +21,8 @@ p_load(
   reshape2,
   grid,
   gridExtra,
-  ComplexUpset
+  ComplexUpset,
+  jsonlite
 )
 
 folders <- basename(
@@ -170,7 +171,22 @@ average_metrics <- l %>%
   ) %>%
   mutate(ab = "Average")
 
+average_model <- l %>%
+  group_by(ab) %>%
+  summarise(
+    accuracy_at_thresh = mean(accuracy_at_thresh, na.rm = TRUE),
+    f1_at_thresh = mean(f1_at_thresh, na.rm = TRUE),
+    roc_auc = mean(roc_auc, na.rm = TRUE),
+    pr_auc = mean(pr_auc, na.rm = TRUE),
+    precision_at_thresh = mean(precision_at_thresh, na.rm = TRUE),
+    recall_at_thresh = mean(recall_at_thresh, na.rm = TRUE),
+    best_thresh = mean(best_thresh, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(model = "average")
+
 l <- rbind(l, average_metrics)
+l <- rbind(l, average_model)
 
 props <- colnames(l)[-c(1, 2)]
 
@@ -180,7 +196,7 @@ heatmap_plots <- list()
 for (prop in props) {
   matrix <- dcast(l, ab ~ model, value.var = prop) %>%
     column_to_rownames("ab")
-  col_order <- models
+  col_order <- c(models, "average")
   row_order <- rownames(matrix)
   if ("Average" %in% row_order) {
     other_rows <- row_order[row_order != "Average"]
@@ -191,11 +207,17 @@ for (prop in props) {
   matrix_width <- 2.3 + (ncol(matrix) * 0.5)
   matrix_height <- (nrow(matrix) * 0.4)
 
+  mat <- as.matrix(matrix)
+  num_labels <- matrix(
+    ifelse(is.na(mat), "", sprintf("%.3f", mat)),
+    nrow = nrow(mat),
+    ncol = ncol(mat)
+  )
   plot <- pheatmap(
-    as.matrix(matrix),
+    mat,
     cluster_rows = FALSE,
     cluster_cols = FALSE,
-    display_numbers = TRUE,
+    display_numbers = num_labels,
     number_format = "%.3f",
     fontsize_number = 6,
     number_color = "black",
@@ -206,7 +228,8 @@ for (prop in props) {
     cellheight = 20,
     angle_col = 45,
     gaps_row = nrow(matrix) - 1,
-    gaps_col = ncol(matrix) - 1,
+    gaps_col = c(ncol(matrix) - 1, ncol(matrix) - 2),
+    na_col = "#00000000",
     color = colorRampPalette(c("red3", "white", "blue"))(100),
     breaks = if (prop == "best_thresh") {
       seq(0, 1, length.out = 101)
